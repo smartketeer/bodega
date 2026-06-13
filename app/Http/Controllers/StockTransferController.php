@@ -137,7 +137,6 @@ class StockTransferController extends Controller
                 $item->decrement('stock_qty', $reqItem['transferQty']);
 
                 // --- LIVE POS SYNCING ---
-                try {
                     // Try to find the matching item in the live POS database
                     $posItem = \Illuminate\Support\Facades\DB::connection('boutique_pos')
                         ->table('items')
@@ -208,9 +207,7 @@ class StockTransferController extends Controller
                                 'updated_at' => now(),
                             ]);
                     }
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('POS Sync Failed: ' . $e->getMessage());
-                }
+                // Let the error bubble up natively
             }
         }
 

@@ -103,7 +103,10 @@ class ImportBalayInventory extends Command
             ];
 
             foreach ($categories as $catName => &$catId) {
-                $cat = Category::firstOrCreate(['name' => $catName]);
+                $cat = Category::firstOrCreate(
+                    ['name' => $catName],
+                    ['type' => 'product']
+                );
                 $catId = $cat->id;
                 $this->info("  Category '{$catName}' => ID {$catId}");
             }

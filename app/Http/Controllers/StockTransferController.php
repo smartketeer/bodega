@@ -158,6 +158,55 @@ class StockTransferController extends Controller
                             ->where('item_id', $posItem->id)
                             ->where('branch_id', $request->to_branch_id)
                             ->increment('quantity', $reqItem['transferQty']);
+                    } else {
+                        // Item doesn't exist in POS yet, let's create it!
+                        $categoryName = 'Uncategorized';
+                        if ($item->category_id) {
+                            $localCategory = \App\Models\Category::find($item->category_id);
+                            if ($localCategory) $categoryName = $localCategory->name;
+                        }
+
+                        $posCategory = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('categories')
+                            ->where('name', $categoryName)
+                            ->first();
+                            
+                        if (!$posCategory) {
+                            $posCategoryId = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                                ->table('categories')
+                                ->insertGetId([
+                                    'name' => $categoryName,
+                                    'type' => 'product',
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                        } else {
+                            $posCategoryId = $posCategory->id;
+                        }
+
+                        $posItemId = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('items')
+                            ->insertGetId([
+                                'name' => $item->name,
+                                'sku' => $item->sku,
+                                'cost' => $item->cost,
+                                'price' => $item->price,
+                                'stock_qty' => $reqItem['transferQty'],
+                                'category_id' => $posCategoryId,
+                                'is_service' => 0,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                            
+                        \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('branch_item_stocks')
+                            ->insert([
+                                'item_id' => $posItemId,
+                                'branch_id' => $request->to_branch_id,
+                                'quantity' => $reqItem['transferQty'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
                     }
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error('POS Sync Failed: ' . $e->getMessage());

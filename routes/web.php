@@ -23,9 +23,9 @@ Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::cla
 Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
 Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
 
-Route::get('/test-db', function () {
+Route::get('/test-pos-items', function () {
     try {
-        return \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('locations')->get();
+        return \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('items')->first();
     } catch (\Exception $e) {
         return ['error' => $e->getMessage()];
     }

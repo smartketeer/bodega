@@ -16,23 +16,30 @@ class FixDatabaseSchema extends Command
             'activity_logs', 'appointments', 'branches', 'branch_item_stocks', 'branch_user',
             'categories', 'clients', 'inventory_imports', 'inventory_import_failures',
             'items', 'product_images', 'sales', 'sale_custom_items', 'sale_items',
-            'sale_modifications', 'settings', 'stock_logs', 'supply_entries', 'users'
+            'sale_modifications', 'settings', 'stock_logs', 'supply_entries', 'users',
+            'migrations', 'stock_transfers'
         ];
 
         $this->info("Fixing primary keys and auto_increments...");
 
         foreach ($tables as $table) {
-            try {
-                // Check if table exists
-                if (DB::getSchemaBuilder()->hasTable($table)) {
-                    // Add primary key and auto_increment
+            // Check if table exists
+            if (DB::getSchemaBuilder()->hasTable($table)) {
+                try {
+                    // Add primary key
                     DB::statement("ALTER TABLE `{$table}` ADD PRIMARY KEY (`id`)");
-                    DB::statement("ALTER TABLE `{$table}` MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT");
-                    $this->info("Fixed {$table}");
+                } catch (\Exception $e) {
+                    // Ignore if primary key already exists
                 }
-            } catch (\Exception $e) {
-                // If it already has a primary key, it will throw an exception, which we can safely ignore
-                $this->warn("Skipped {$table} (Primary key may already exist)");
+
+                try {
+                    // Add auto_increment
+                    $type = $table === 'migrations' ? 'int(10)' : 'bigint(20)';
+                    DB::statement("ALTER TABLE `{$table}` MODIFY `id` {$type} UNSIGNED NOT NULL AUTO_INCREMENT");
+                    $this->info("Fixed auto-increment for {$table}");
+                } catch (\Exception $e) {
+                    $this->warn("Could not modify auto-increment for {$table}");
+                }
             }
         }
 

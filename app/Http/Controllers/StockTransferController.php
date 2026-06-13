@@ -92,9 +92,34 @@ class StockTransferController extends Controller
             $item = Item::find($reqItem['id']);
             if ($item) {
                 $item->decrement('stock_qty', $reqItem['transferQty']);
-            }
 
-            // Optional: Create stock_logs and branch_item_stocks adjustments here
+                // --- LIVE POS SYNCING ---
+                try {
+                    // Try to find the matching item in the live POS database
+                    $posItem = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                        ->table('items')
+                        ->where('sku', $item->sku)
+                        ->orWhere('name', $item->name)
+                        ->first();
+
+                    if ($posItem) {
+                        // Increment total stock in the POS items table
+                        \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('items')
+                            ->where('id', $posItem->id)
+                            ->increment('stock_qty', $reqItem['transferQty']);
+
+                        // Increment specific branch stock in the POS
+                        \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('branch_item_stocks')
+                            ->where('item_id', $posItem->id)
+                            ->where('branch_id', $request->to_branch_id)
+                            ->increment('quantity', $reqItem['transferQty']);
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('POS Sync Failed: ' . $e->getMessage());
+                }
+            }
         }
 
         return redirect()->back()->with('success', 'Transfer sent successfully!');

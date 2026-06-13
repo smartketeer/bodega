@@ -57,11 +57,51 @@ class StockTransferController extends Controller
                 ];
             });
 
+        $stockInHistory = \Illuminate\Support\Facades\DB::table('stock_logs')
+            ->join('items', 'stock_logs.item_id', '=', 'items.id')
+            ->select('stock_logs.*', 'items.name as item_name')
+            ->where('stock_logs.reason', 'stock_in')
+            ->orderBy('stock_logs.created_at', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'date' => \Carbon\Carbon::parse($log->created_at)->format('n/j/Y, g:i:s A'),
+                    'item' => $log->item_name,
+                    'type' => 'RECEIPT',
+                    'change' => '+' . $log->change_qty,
+                    'new' => $log->new_qty,
+                ];
+            });
+
+        $stockOutHistory = \Illuminate\Support\Facades\DB::table('stock_logs')
+            ->join('items', 'stock_logs.item_id', '=', 'items.id')
+            ->select('stock_logs.*', 'items.name as item_name')
+            ->where('stock_logs.reason', 'like', 'stock_out%')
+            ->orderBy('stock_logs.created_at', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($log) {
+                $parts = explode(':', $log->reason);
+                $type = isset($parts[1]) ? strtoupper(trim($parts[1])) : 'ISSUE';
+                return [
+                    'id' => $log->id,
+                    'date' => \Carbon\Carbon::parse($log->created_at)->format('n/j/Y, g:i:s A'),
+                    'item' => $log->item_name,
+                    'type' => $type,
+                    'change' => $log->change_qty,
+                    'new' => $log->new_qty,
+                ];
+            });
+
         return Inertia::render('StockTransfers', [
             'branches' => $branches,
             'availableItems' => $availableItems,
             'branchRequisitions' => $pendingRequisitions,
             'transferHistory' => $transferHistory,
+            'stockInHistory' => $stockInHistory,
+            'stockOutHistory' => $stockOutHistory,
         ]);
     }
 
@@ -123,5 +163,87 @@ class StockTransferController extends Controller
         }
 
         return redirect()->back()->with('success', 'Transfer sent successfully!');
+    }
+
+    public function stockIn(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:items,id',
+            'quantity' => 'required|integer|min:1',
+            'reference' => 'nullable|string',
+            'notes' => 'nullable|string'
+        ]);
+
+        $item = Item::find($request->item_id);
+        $newQty = $item->stock_qty + $request->quantity;
+        
+        $item->update(['stock_qty' => $newQty]);
+
+        \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
+            'item_id' => $item->id,
+            'change_qty' => $request->quantity,
+            'new_qty' => $newQty,
+            'reason' => 'stock_in',
+            'reference' => $request->reference,
+            'notes' => $request->notes,
+            'branch_id' => null, // Bodega
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Stock in successful!');
+    }
+
+    public function stockOut(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:items,id',
+            'quantity' => 'required|integer|min:1',
+            'reference' => 'nullable|string',
+            'notes' => 'nullable|string',
+            'reason' => 'required|string', // Issue, Damage, etc.
+        ]);
+
+        $item = Item::find($request->item_id);
+        
+        if ($item->stock_qty < $request->quantity) {
+            return redirect()->back()->withErrors(['quantity' => 'Insufficient stock.']);
+        }
+
+        $newQty = $item->stock_qty - $request->quantity;
+        $item->update(['stock_qty' => $newQty]);
+
+        \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
+            'item_id' => $item->id,
+            'change_qty' => -$request->quantity,
+            'new_qty' => $newQty,
+            'reason' => 'stock_out: ' . $request->reason,
+            'reference' => $request->reference,
+            'notes' => $request->notes,
+            'branch_id' => null, // Bodega
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Stock out successful!');
+    }
+
+    public function adjust(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:items,id',
+            'name' => 'required|string',
+            'capitalPrice' => 'required|numeric',
+            'sellingPrice' => 'required|numeric',
+        ]);
+
+        $item = Item::find($request->item_id);
+        $item->update([
+            'name' => $request->name,
+            'cost' => $request->capitalPrice,
+            'price' => $request->sellingPrice,
+        ]);
+
+        return redirect()->back()->with('success', 'Product details updated!');
     }
 }

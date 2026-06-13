@@ -6,7 +6,7 @@ import {
     ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus 
 } from 'lucide-react';
 
-export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory }) {
+export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory, stockInHistory, stockOutHistory }) {
     const [activeTab, setActiveTab] = useState('adjust'); // 'stock-in', 'stock-out', 'adjust', 'transfer'
     const [selectedBranch, setSelectedBranch] = useState(branches?.[0]?.id || '');
     
@@ -106,7 +106,26 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
     const handleMovementSubmit = (e) => {
         e.preventDefault();
-        alert(`${tabDetails[activeTab].title} saved for item ID: ${selectedItem}`);
+        
+        const url = activeTab === 'stock-in' ? '/stock-in' : '/stock-out';
+        
+        router.post(url, {
+            item_id: selectedItem,
+            quantity: quantity,
+            reason: activeTab === 'stock-out' ? reason : undefined,
+            reference: reference,
+            notes: notes
+        }, {
+            onSuccess: () => {
+                setSelectedItem('');
+                setQuantity('');
+                setReason('');
+                setReference('');
+                setNotes('');
+                setSearchQuery('');
+                alert(`${tabDetails[activeTab].title} saved successfully!`);
+            }
+        });
     };
 
     const handleEditClick = (item) => {
@@ -119,8 +138,16 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     };
 
     const handleSaveEdit = () => {
-        setEditingItemId(null);
-        // Implement save logic here
+        router.post('/stock-adjust', {
+            item_id: editingItemId,
+            name: editFormData.name,
+            capitalPrice: editFormData.capitalPrice,
+            sellingPrice: editFormData.sellingPrice
+        }, {
+            onSuccess: () => {
+                setEditingItemId(null);
+            }
+        });
     };
 
     const tabDetails = {
@@ -524,7 +551,10 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
                                     <div className="p-5 border-b border-gray-100 flex items-center justify-between">
                                         <h3 className="text-base font-bold text-gray-900">Recent entries</h3>
-                                        <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                                        <button 
+                                            onClick={() => router.reload({ only: ['stockInHistory', 'stockOutHistory'] })}
+                                            className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                                        >
                                             <RefreshCw size={14} /> Refresh
                                         </button>
                                     </div>
@@ -541,81 +571,43 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
                                                 {activeTab === 'stock-in' ? (
-                                                    <>
-                                                        <tr className="hover:bg-gray-50/50 transition-colors">
-                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">6/7/2026, 1:59:13 PM</td>
+                                                    stockInHistory && stockInHistory.length > 0 ? stockInHistory.map((log) => (
+                                                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">{log.date}</td>
                                                             <td className="px-5 py-4">
-                                                                <div className="font-bold text-gray-900 text-sm">Chitcharon</div>
-                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">Receipt</div>
+                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">{log.item}</div>
+                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">{log.type}</div>
                                                             </td>
                                                             <td className="px-5 py-4 text-center">
                                                                 <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 text-gray-800">
-                                                                    +13
+                                                                    {log.change}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">20</td>
-                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">—</td>
+                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">{log.new}</td>
+                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">{log.reference || '—'}</td>
                                                         </tr>
-                                                        <tr className="hover:bg-gray-50/50 transition-colors">
-                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">6/5/2026, 9:13:39 PM</td>
-                                                            <td className="px-5 py-4">
-                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">88 TOTAL WHITE UNDERARM CREAM</div>
-                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">Receipt</div>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center">
-                                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 text-gray-800">
-                                                                    +2
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">7</td>
-                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">—</td>
-                                                        </tr>
-                                                    </>
+                                                    )) : (
+                                                        <tr><td colSpan="5" className="text-center py-4 text-gray-500 font-medium">No recent stock-in entries</td></tr>
+                                                    )
                                                 ) : (
-                                                    <>
-                                                        <tr className="hover:bg-gray-50/50 transition-colors">
-                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">5/31/2026, 1:55:56 PM</td>
+                                                    stockOutHistory && stockOutHistory.length > 0 ? stockOutHistory.map((log) => (
+                                                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">{log.date}</td>
                                                             <td className="px-5 py-4">
-                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">1 DVA CHAIRS 100 SLICES</div>
-                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">Issue</div>
+                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">{log.item}</div>
+                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">{log.type}</div>
                                                             </td>
                                                             <td className="px-5 py-4 text-center">
                                                                 <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 text-gray-800">
-                                                                    -5
+                                                                    {log.change}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">40</td>
-                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">—</td>
+                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">{log.new}</td>
+                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">{log.reference || '—'}</td>
                                                         </tr>
-                                                        <tr className="hover:bg-gray-50/50 transition-colors">
-                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">5/22/2026, 12:06:49 AM</td>
-                                                            <td className="px-5 py-4">
-                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">1 Gallon Body Lotion Lavender</div>
-                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">Issue</div>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center">
-                                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 text-gray-800">
-                                                                    -3
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">1</td>
-                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">—</td>
-                                                        </tr>
-                                                        <tr className="hover:bg-gray-50/50 transition-colors">
-                                                            <td className="px-5 py-4 text-xs text-gray-700 font-medium">5/3/2026, 12:29:35 PM</td>
-                                                            <td className="px-5 py-4">
-                                                                <div className="font-bold text-gray-900 text-sm truncate max-w-[200px]">1 Box Chalks 100 Sticks</div>
-                                                                <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">Issue</div>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center">
-                                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 text-gray-800">
-                                                                    -50
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center font-bold text-gray-900 text-sm">50</td>
-                                                            <td className="px-5 py-4 text-center text-gray-400 font-medium">—</td>
-                                                        </tr>
-                                                    </>
+                                                    )) : (
+                                                        <tr><td colSpan="5" className="text-center py-4 text-gray-500 font-medium">No recent stock-out entries</td></tr>
+                                                    )
                                                 )}
                                             </tbody>
                                         </table>

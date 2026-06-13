@@ -146,15 +146,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             <p className="text-gray-700 font-medium">Record stock changes here. Inventory is read-only and shows snapshots.</p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center gap-3">
-                            <select 
-                                className="rounded-xl border-gray-200 bg-white focus:border-blue-500 shadow-sm text-sm font-semibold text-gray-700 py-2.5 pl-4 pr-10 w-full sm:w-auto"
-                                value={selectedBranch}
-                                onChange={e => setSelectedBranch(e.target.value)}
-                            >
-                                {branches?.map(branch => (
-                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                ))}
-                            </select>
+
                             <div className="relative w-full sm:w-auto" ref={addDropdownRef}>
                                 <button 
                                     onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}

@@ -89,18 +89,9 @@ class InventoryAnalyticsController extends Controller
             ->where('stock_qty', '>', 0)
             ->where('updated_at', '<', $thirtyDaysAgo)
             ->get();
-            
-        if ($deadStocks->isEmpty()) {
-            $deadStocks = Item::with('category')
-                ->where('stock_qty', '>', 0)
-                ->orderBy('updated_at', 'asc')
-                ->take(5)
-                ->get();
-        }
 
         $deadStockItems = $deadStocks->map(function ($item) {
             $daysStagnant = Carbon::parse($item->updated_at)->diffInDays(Carbon::now());
-            if ($daysStagnant == 0) $daysStagnant = 35; // Mock fallback
             
             $status = 'Warning';
             if ($daysStagnant > 60) $status = 'Severe';

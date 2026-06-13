@@ -23,12 +23,6 @@ Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::cla
 Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
 Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
 
-Route::get('/test-log', function () {
-    $logFile = storage_path('logs/laravel.log');
-    if (!file_exists($logFile)) return 'No log file';
-    $lines = file($logFile);
-    return implode("", array_slice($lines, -50));
-});
 
 Route::get('/dead-stock', [InventoryAnalyticsController::class, 'deadStock']);
 Route::get('/reports', [InventoryAnalyticsController::class, 'reports']);

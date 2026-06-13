@@ -26,10 +26,6 @@ class DashboardController extends Controller
             ->where('updated_at', '<', $thirtyDaysAgo)
             ->count();
 
-        if ($deadStockCount == 0) {
-            $deadStockCount = Item::where('stock_qty', '>', 0)->count(); // fallback for mock data
-        }
-
         // Exclude POS-specific cashier activities
         $excludedEvents = [
             'Sale Completed', 'sale_completed', 

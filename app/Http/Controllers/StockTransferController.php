@@ -138,11 +138,15 @@ class StockTransferController extends Controller
 
                 // --- LIVE POS SYNCING ---
                     // Try to find the matching item in the live POS database
-                    $posItem = \Illuminate\Support\Facades\DB::connection('boutique_pos')
-                        ->table('items')
-                        ->where('sku', $item->sku)
-                        ->orWhere('name', $item->name)
-                        ->first();
+                    $posItemQuery = \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('items');
+                    if (!empty($item->sku)) {
+                        $posItemQuery->where(function($q) use ($item) {
+                            $q->where('sku', $item->sku)->orWhere('name', $item->name);
+                        });
+                    } else {
+                        $posItemQuery->where('name', $item->name);
+                    }
+                    $posItem = $posItemQuery->first();
 
                     // Resolve correct POS branch ID by name
                     $bodegaBranch = \App\Models\Branch::find($request->to_branch_id);

@@ -223,6 +223,12 @@ class StockTransferController extends Controller
             }
         }
 
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'stock_transfer',
+            'description' => 'Transferred ' . count($request->items) . ' item(s) to ' . \App\Models\Branch::find($request->to_branch_id)->name,
+        ]);
+
         return redirect()->back()->with('success', 'Transfer sent successfully!');
     }
 
@@ -250,6 +256,12 @@ class StockTransferController extends Controller
             'branch_id' => null, // Bodega
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'stock_restock',
+            'description' => "Stock in: +{$request->quantity} for {$item->name}",
         ]);
 
         return redirect()->back()->with('success', 'Stock in successful!');
@@ -286,6 +298,12 @@ class StockTransferController extends Controller
             'updated_at' => now(),
         ]);
 
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'stock_out',
+            'description' => "Stock out: -{$request->quantity} for {$item->name} ({$request->reason})",
+        ]);
+
         return redirect()->back()->with('success', 'Stock out successful!');
     }
 
@@ -303,6 +321,12 @@ class StockTransferController extends Controller
             'name' => $request->name,
             'cost' => $request->capitalPrice,
             'price' => $request->sellingPrice,
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'item_adjusted',
+            'description' => "Adjusted details for {$request->name}",
         ]);
 
         return redirect()->back()->with('success', 'Product details updated!');
@@ -341,6 +365,12 @@ class StockTransferController extends Controller
             ]);
         }
 
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'item_added',
+            'description' => "Added new item: {$item->name}",
+        ]);
+
         return redirect()->back();
     }
 
@@ -355,6 +385,12 @@ class StockTransferController extends Controller
         $category->name = $validated['name'];
         $category->type = $validated['type'];
         $category->save();
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'category_added',
+            'description' => "Added new category: {$category->name}",
+        ]);
 
         return redirect()->back();
     }

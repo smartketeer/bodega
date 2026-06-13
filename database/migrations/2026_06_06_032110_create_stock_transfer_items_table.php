@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('stock_transfer_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('stock_transfer_id')->constrained()->cascadeOnDelete();
-            $table->unsignedBigInteger('item_id');
-            $table->integer('quantity');
-            $table->timestamps();
+        if (!Schema::hasTable('stock_transfer_items')) {
+            Schema::create('stock_transfer_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('stock_transfer_id')->constrained()->cascadeOnDelete();
+                $table->unsignedBigInteger('item_id');
+                $table->integer('quantity');
+                $table->timestamps();
 
-            $table->foreign('item_id')->references('id')->on('items')->onDelete('cascade');
-        });
+                $table->foreign('item_id')->references('id')->on('items')->onDelete('cascade');
+            });
+        }
     }
 
     /**

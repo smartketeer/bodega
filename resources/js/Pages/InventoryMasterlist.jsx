@@ -219,25 +219,7 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
 
                     {/* Controls Row */}
                     <div className="flex flex-row flex-wrap items-center gap-2 md:gap-3 mb-6 w-full">
-                        {/* Dropdown */}
-                        <div className="relative w-auto min-w-[140px] md:w-56 shrink-0 flex-grow sm:flex-grow-0">
-                            <select 
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="appearance-none w-full bg-white border border-gray-300 text-gray-700 py-2.5 pl-4 pr-10 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-gray-200 hover:border-gray-400 transition-colors cursor-pointer"
-                            >
-                                <option value="all">Luna Branch</option>
-                                {categories && categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                            </div>
-                        </div>
-                        
+
                         {/* Search Bar */}
                         <div className="relative flex-1 min-w-[200px]">
                             <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -273,10 +255,6 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
                             </button>
                         </div>
 
-                        {/* More button */}
-                        <button className="p-2.5 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 bg-white transition-colors shrink-0 flex items-center justify-center">
-                            <MoreHorizontal size={18} />
-                        </button>
                     </div>
 
                     {/* Table Header */}

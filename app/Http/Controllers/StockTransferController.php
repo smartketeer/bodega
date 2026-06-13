@@ -249,4 +249,55 @@ class StockTransferController extends Controller
 
         return redirect()->back()->with('success', 'Product details updated!');
     }
+
+    public function storeItem(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:255',
+            'category_id' => 'required|exists:categories,id',
+            'capital_price' => 'required|numeric|min:0',
+            'selling_price' => 'required|numeric|min:0',
+            'initial_stocks' => 'required|numeric|min:0',
+        ]);
+
+        $item = new \App\Models\Item();
+        $item->name = $validated['name'];
+        $item->sku = $validated['sku'] ?? null;
+        $item->category_id = $validated['category_id'];
+        $item->cost = $validated['capital_price'];
+        $item->price = $validated['selling_price'];
+        $item->stock_qty = $validated['initial_stocks'];
+        $item->is_service = 0;
+        $item->save();
+
+        if ($validated['initial_stocks'] > 0) {
+            \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
+                'item_id' => $item->id,
+                'change_qty' => $validated['initial_stocks'],
+                'new_qty' => $validated['initial_stocks'],
+                'reason' => 'stock_in',
+                'reference' => 'Initial Stock',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return redirect()->back();
+    }
+
+    public function storeCategory(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|in:product,service',
+        ]);
+
+        $category = new \App\Models\Category();
+        $category->name = $validated['name'];
+        $category->type = $validated['type'];
+        $category->save();
+
+        return redirect()->back();
+    }
 }

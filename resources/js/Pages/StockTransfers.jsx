@@ -28,6 +28,34 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
     const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
     
+    // Modal Forms State
+    const [addItemForm, setAddItemForm] = useState({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
+    const [addCategoryForm, setAddCategoryForm] = useState({ name: '', type: 'product' });
+
+    const handleAddItem = (e) => {
+        e.preventDefault();
+        router.post('/items', addItemForm, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsAddItemModalOpen(false);
+                setAddItemForm({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
+                router.reload();
+            }
+        });
+    };
+
+    const handleAddCategory = (e) => {
+        e.preventDefault();
+        router.post('/categories', addCategoryForm, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsAddCategoryModalOpen(false);
+                setAddCategoryForm({ name: '', type: 'product' });
+                router.reload();
+            }
+        });
+    };
+    
     // Inline Edit State
     const [editingItemId, setEditingItemId] = useState(null);
     const [editFormData, setEditFormData] = useState({ name: '', capitalPrice: '', sellingPrice: '' });
@@ -727,16 +755,16 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                         <div className="p-6 space-y-5">
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">ITEM NAME</label>
-                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.name} onChange={e => setAddItemForm({...addItemForm, name: e.target.value})} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">SKU (OPTIONAL)</label>
-                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.sku} onChange={e => setAddItemForm({...addItemForm, sku: e.target.value})} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">CATEGORY</label>
-                                <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors">
-                                    <option>Select Category</option>
+                                <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors" value={addItemForm.category_id} onChange={e => setAddItemForm({...addItemForm, category_id: e.target.value})}>
+                                    <option value="">Select Category</option>
                                     {categories?.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
@@ -745,20 +773,20 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             <div className="grid grid-cols-2 gap-5">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">PRICE (₱)</label>
-                                    <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                    <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.selling_price} onChange={e => setAddItemForm({...addItemForm, selling_price: e.target.value})} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">COST (₱)</label>
-                                    <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                    <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.capital_price} onChange={e => setAddItemForm({...addItemForm, capital_price: e.target.value})} />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">INITIAL STOCKS</label>
-                                <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                <input type="number" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.initial_stocks} onChange={e => setAddItemForm({...addItemForm, initial_stocks: e.target.value})} />
                             </div>
                         </div>
                         <div className="p-6 pt-2">
-                            <button className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide">
+                            <button onClick={handleAddItem} className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide">
                                 SAVE ITEM
                             </button>
                         </div>
@@ -778,18 +806,18 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                         <div className="p-6 space-y-5">
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">CATEGORY NAME</label>
-                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" />
+                                <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addCategoryForm.name} onChange={e => setAddCategoryForm({...addCategoryForm, name: e.target.value})} />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">TYPE</label>
-                                <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors">
+                                <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors" value={addCategoryForm.type} onChange={e => setAddCategoryForm({...addCategoryForm, type: e.target.value})}>
                                     <option value="product">Product</option>
                                     <option value="service">Service</option>
                                 </select>
                             </div>
                         </div>
                         <div className="p-6 pt-2">
-                            <button className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide">
+                            <button onClick={handleAddCategory} className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide">
                                 SAVE CATEGORY
                             </button>
                         </div>

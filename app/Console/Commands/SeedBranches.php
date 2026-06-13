@@ -18,7 +18,7 @@ class SeedBranches extends Command
         
         try {
             // Attempt to fetch from POS database 'branches' table
-            $posLocations = DB::connection('boutique_pos')->table('branches')->whereNull('deleted_at')->get();
+            $posLocations = DB::connection('boutique_pos')->table('branches')->get();
             
             if ($posLocations->isEmpty()) {
                 $this->warn('No branches found in boutique_pos database. Defaulting to Roxas and Luna Branch...');

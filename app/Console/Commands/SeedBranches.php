@@ -17,11 +17,11 @@ class SeedBranches extends Command
         $this->info('Connecting to boutique-pos.com database...');
         
         try {
-            // Attempt to fetch from POS database 'locations' table
-            $posLocations = DB::connection('boutique_pos')->table('locations')->whereNull('deleted_at')->get();
+            // Attempt to fetch from POS database 'branches' table
+            $posLocations = DB::connection('boutique_pos')->table('branches')->whereNull('deleted_at')->get();
             
             if ($posLocations->isEmpty()) {
-                $this->warn('No locations found in boutique_pos database. Defaulting to Roxas and Luna Branch...');
+                $this->warn('No branches found in boutique_pos database. Defaulting to Roxas and Luna Branch...');
                 $this->seedDefaults();
                 return 0;
             }

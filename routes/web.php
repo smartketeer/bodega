@@ -23,6 +23,14 @@ Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::cla
 Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
 Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
 
+Route::get('/test-db', function () {
+    try {
+        return \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('locations')->get();
+    } catch (\Exception $e) {
+        return ['error' => $e->getMessage()];
+    }
+});
+
 Route::get('/dead-stock', [InventoryAnalyticsController::class, 'deadStock']);
 Route::get('/reports', [InventoryAnalyticsController::class, 'reports']);
 

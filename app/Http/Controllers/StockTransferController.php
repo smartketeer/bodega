@@ -144,6 +144,14 @@ class StockTransferController extends Controller
                         ->orWhere('name', $item->name)
                         ->first();
 
+                    // Resolve correct POS branch ID by name
+                    $bodegaBranch = \App\Models\Branch::find($request->to_branch_id);
+                    $posBranch = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                        ->table('branches')
+                        ->where('name', $bodegaBranch->name)
+                        ->first();
+                    $posBranchId = $posBranch ? $posBranch->id : $request->to_branch_id;
+
                     if ($posItem) {
                         // Increment total stock in the POS items table
                         \Illuminate\Support\Facades\DB::connection('boutique_pos')
@@ -155,7 +163,7 @@ class StockTransferController extends Controller
                         \Illuminate\Support\Facades\DB::connection('boutique_pos')
                             ->table('branch_item_stocks')
                             ->where('item_id', $posItem->id)
-                            ->where('branch_id', $request->to_branch_id)
+                            ->where('branch_id', $posBranchId)
                             ->increment('quantity', $reqItem['transferQty']);
                     } else {
                         // Item doesn't exist in POS yet, let's create it!
@@ -201,7 +209,7 @@ class StockTransferController extends Controller
                             ->table('branch_item_stocks')
                             ->insert([
                                 'item_id' => $posItemId,
-                                'branch_id' => $request->to_branch_id,
+                                'branch_id' => $posBranchId,
                                 'quantity' => $reqItem['transferQty'],
                                 'created_at' => now(),
                                 'updated_at' => now(),

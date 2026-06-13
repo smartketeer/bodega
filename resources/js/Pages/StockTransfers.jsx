@@ -6,7 +6,7 @@ import {
     ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus 
 } from 'lucide-react';
 
-export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory, stockInHistory, stockOutHistory }) {
+export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory, stockInHistory, stockOutHistory, categories }) {
     const [activeTab, setActiveTab] = useState('adjust'); // 'stock-in', 'stock-out', 'adjust', 'transfer'
     const [selectedBranch, setSelectedBranch] = useState(branches?.[0]?.id || '');
     
@@ -737,6 +737,9 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">CATEGORY</label>
                                 <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors">
                                     <option>Select Category</option>
+                                    {categories?.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-5">
@@ -780,7 +783,8 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">TYPE</label>
                                 <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors">
-                                    <option>Product</option>
+                                    <option value="product">Product</option>
+                                    <option value="service">Service</option>
                                 </select>
                             </div>
                         </div>

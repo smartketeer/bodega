@@ -95,6 +95,8 @@ class StockTransferController extends Controller
                 ];
             });
 
+        $categories = \App\Models\Category::all();
+
         return Inertia::render('StockTransfers', [
             'branches' => $branches,
             'availableItems' => $availableItems,
@@ -102,6 +104,7 @@ class StockTransferController extends Controller
             'transferHistory' => $transferHistory,
             'stockInHistory' => $stockInHistory,
             'stockOutHistory' => $stockOutHistory,
+            'categories' => $categories,
         ]);
     }
 

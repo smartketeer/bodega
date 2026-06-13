@@ -37,8 +37,18 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
     const filteredItems = availableItems.filter(item => 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        item.sku.toLowerCase().includes(searchQuery.toLowerCase())
+        (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 30;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+    const paginatedItems = filteredItems.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
 
 
@@ -402,7 +412,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {filteredItems.map((item) => {
+                                            {paginatedItems.map((item) => {
                                                 if (editingItemId === item.id) {
                                                     return (
                                                         <tr key={item.id} className="hover:bg-gray-50/50 transition-colors bg-gray-50/30">
@@ -471,6 +481,29 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                         </tbody>
                                     </table>
                                 </div>
+                                {totalPages > 1 && (
+                                    <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                        <span className="text-sm text-gray-500 font-medium">
+                                            Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredItems.length)} of {filteredItems.length} entries
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <button 
+                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Prev
+                                            </button>
+                                            <button 
+                                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-8">

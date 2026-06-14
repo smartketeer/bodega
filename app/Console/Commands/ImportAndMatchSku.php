@@ -80,10 +80,25 @@ class ImportAndMatchSku extends Command
 
             // Review no matches
             if ($matches['no_match']->count() > 0) {
-                $this->info("\n❌ No matches found:");
+                $this->info("\n❌ No matches found (showing best potential matches):");
+                $noMatchRows = [];
+                foreach ($matches['no_match'] as $itemData) {
+                    $bodegaItem = $itemData['bodega'];
+                    $bestPotential = $itemData['best_potential'];
+                    if ($bestPotential) {
+                        $noMatchRows[] = [
+                            $bodegaItem->name,
+                            $bestPotential['item']->name,
+                            $bestPotential['score'] . '%',
+                            $bestPotential['item']->sku ?? 'N/A'
+                        ];
+                    } else {
+                        $noMatchRows[] = [$bodegaItem->name, 'No potential match', '-', '-'];
+                    }
+                }
                 $this->table(
-                    ['Bodega Item'],
-                    $matches['no_match']->map(fn($b) => [$b->name])->toArray()
+                    ['Bodega Item', 'Best Potential Match', 'Similarity', 'SKU'],
+                    $noMatchRows
                 );
             }
 
@@ -95,7 +110,8 @@ class ImportAndMatchSku extends Command
             // Step 4: Create backup of current SKUs
             $this->info("\n💾 Creating backup of current SKUs...");
             $backupFile = storage_path('app/sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json');
-            $backupData = $bodegaItems->map(fn($item) => [
+            $allBodegaItems = Item::all(['id', 'name', 'sku']);
+            $backupData = $allBodegaItems->map(fn($item) => [
                 'id' => $item->id,
                 'name' => $item->name,
                 'original_sku' => $item->sku,
@@ -151,6 +167,34 @@ class ImportAndMatchSku extends Command
                 }
             }
 
+            // Process potential matches from no-match list
+            foreach ($matches['no_match'] as $itemData) {
+                $bodegaItem = $itemData['bodega'];
+                $bestPotential = $itemData['best_potential'];
+                
+                if (!$bestPotential || !$bestPotential['item']->sku) continue;
+
+                $confirm = $this->confirm(
+                    "\n[POTENTIAL MATCH] Apply SKU '{$bestPotential['item']->sku}' to '{$bodegaItem->name}' (matched with '{$bestPotential['item']->name}' at {$bestPotential['score']}% similarity)?",
+                    false
+                );
+
+                if ($confirm) {
+                    $item = Item::find($bodegaItem->id);
+                    $originalSku = $item->sku;
+                    $item->sku = $bestPotential['item']->sku;
+                    $item->save();
+                    $changes->push([
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'original_sku' => $originalSku,
+                        'new_sku' => $item->sku,
+                    ]);
+                    $updated++;
+                    $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
+                }
+            }
+
             $this->info("\n✅ Done! Updated {$updated} items with SKUs!");
             $this->info("\n💡 To rollback these changes, run: php artisan inventory:rollback-sku");
 
@@ -171,18 +215,18 @@ class ImportAndMatchSku extends Command
         $usedBoutiqueIds = [];
 
         foreach ($bodegaItems as $bodegaItem) {
-            $bodegaNameLower = strtolower(trim($bodegaItem->name));
+            $bodegaNormalized = $this->normalizeName($bodegaItem->name);
             $bestMatch = null;
             $bestScore = 0;
             $foundPerfectMatch = false;
 
-            // First check for exact match
+            // First check for exact match (normalized)
             foreach ($boutiqueItems as $boutiqueItem) {
                 if (in_array($boutiqueItem->id, $usedBoutiqueIds)) continue;
 
-                $boutiqueNameLower = strtolower(trim($boutiqueItem->name));
+                $boutiqueNormalized = $this->normalizeName($boutiqueItem->name);
 
-                if ($bodegaNameLower === $boutiqueNameLower) {
+                if ($bodegaNormalized === $boutiqueNormalized) {
                     $perfectMatches->push([
                         'bodega' => $bodegaItem,
                         'boutique' => $boutiqueItem,
@@ -193,8 +237,8 @@ class ImportAndMatchSku extends Command
                 }
 
                 // Calculate fuzzy match score
-                $score = $this->calculateSimilarity($bodegaNameLower, $boutiqueNameLower);
-                if ($score > $bestScore && $score >= 60) { // 60% similarity threshold
+                $score = $this->calculateSimilarity($bodegaItem->name, $boutiqueItem->name);
+                if ($score > $bestScore && $score >= 40) { // Lowered to 40% threshold
                     $bestScore = $score;
                     $bestMatch = $boutiqueItem;
                 }
@@ -213,7 +257,10 @@ class ImportAndMatchSku extends Command
                 ]);
                 $usedBoutiqueIds[] = $bestMatch->id;
             } else {
-                $noMatches->push($bodegaItem);
+                $noMatches->push([
+                    'bodega' => $bodegaItem,
+                    'best_potential' => $this->findBestPotentialMatch($bodegaItem, $boutiqueItems, $usedBoutiqueIds),
+                ]);
             }
         }
 
@@ -224,13 +271,42 @@ class ImportAndMatchSku extends Command
         ];
     }
 
+    private function findBestPotentialMatch($bodegaItem, $boutiqueItems, $usedBoutiqueIds)
+    {
+        $bestScore = 0;
+        $bestMatch = null;
+
+        foreach ($boutiqueItems as $boutiqueItem) {
+            if (in_array($boutiqueItem->id, $usedBoutiqueIds)) continue;
+
+            $score = $this->calculateSimilarity($bodegaItem->name, $boutiqueItem->name);
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestMatch = $boutiqueItem;
+            }
+        }
+
+        return $bestMatch ? [
+            'item' => $bestMatch,
+            'score' => $bestScore
+        ] : null;
+    }
+
+    private function normalizeName($str): string
+    {
+        $str = strtolower(trim($str));
+        // Remove common patterns like "(Color)", "(Size)", etc.
+        $str = preg_replace('/\([^)]*\)/', '', $str);
+        // Remove punctuation and extra spaces
+        $str = preg_replace('/[^a-z0-9\s]/', '', $str);
+        $str = preg_replace('/\s+/', ' ', $str);
+        return trim($str);
+    }
+
     private function calculateSimilarity($str1, $str2): int
     {
-        // Remove common punctuation and extra spaces
-        $clean1 = preg_replace('/[^a-z0-9\s]/', '', $str1);
-        $clean2 = preg_replace('/[^a-z0-9\s]/', '', $str2);
-        $clean1 = preg_replace('/\s+/', ' ', trim($clean1));
-        $clean2 = preg_replace('/\s+/', ' ', trim($clean2));
+        $clean1 = $this->normalizeName($str1);
+        $clean2 = $this->normalizeName($str2);
 
         $len1 = strlen($clean1);
         $len2 = strlen($clean2);

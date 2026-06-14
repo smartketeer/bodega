@@ -171,6 +171,7 @@ class ImportAndMatchSku extends Command
             $bodegaNameLower = strtolower(trim($bodegaItem->name));
             $bestMatch = null;
             $bestScore = 0;
+            $foundPerfectMatch = false;
 
             // First check for exact match
             foreach ($boutiqueItems as $boutiqueItem) {
@@ -184,7 +185,8 @@ class ImportAndMatchSku extends Command
                         'boutique' => $boutiqueItem,
                     ]);
                     $usedBoutiqueIds->push($boutiqueItem->id);
-                    continue 2; // Move to next bodega item
+                    $foundPerfectMatch = true;
+                    break;
                 }
 
                 // Calculate fuzzy match score
@@ -193,6 +195,10 @@ class ImportAndMatchSku extends Command
                     $bestScore = $score;
                     $bestMatch = $boutiqueItem;
                 }
+            }
+
+            if ($foundPerfectMatch) {
+                continue;
             }
 
             // If we found a fuzzy match
@@ -208,7 +214,11 @@ class ImportAndMatchSku extends Command
             }
         }
 
-        return compact('perfectMatches', 'fuzzyMatches', 'noMatches');
+        return [
+            'perfect' => $perfectMatches,
+            'fuzzy' => $fuzzyMatches,
+            'no_match' => $noMatches,
+        ];
     }
 
     private function calculateSimilarity($str1, $str2): int

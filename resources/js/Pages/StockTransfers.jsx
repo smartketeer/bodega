@@ -22,6 +22,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [destination, setDestination] = useState('');
     const [selectedItems, setSelectedItems] = useState([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [fulfillingRequisitionId, setFulfillingRequisitionId] = useState(null);
     
     // Add Dropdown and Modals
     const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
@@ -131,15 +132,39 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
         router.post('/stock-transfers', {
             to_branch_id: destination,
-            items: selectedItems
+            items: selectedItems,
+            requisition_id: fulfillingRequisitionId
         }, {
             onSuccess: () => {
                 setDestination('');
                 setSearchQuery('');
                 setSelectedItems([]);
+                setFulfillingRequisitionId(null);
                 alert('Transfer sent successfully!');
             }
         });
+    };
+
+    const handleApproveRequest = (req) => {
+        const matchedItem = availableItems.find(i => 
+            (i.sku && req.sku && i.sku.toLowerCase() === req.sku.toLowerCase()) || 
+            i.name.toLowerCase() === req.item.toLowerCase()
+        );
+
+        if (!matchedItem) {
+            alert(`Item '${req.item}' not found in Bodega inventory! Please check SKU or name.`);
+            return;
+        }
+
+        if (matchedItem.stock < req.qty) {
+            alert(`Insufficient stock! Bodega only has ${matchedItem.stock}x of ${matchedItem.name}.`);
+            return;
+        }
+
+        setDestination(req.branch_id);
+        setSelectedItems([{ ...matchedItem, transferQty: req.qty }]);
+        setFulfillingRequisitionId(req.id);
+        setActiveTab('transfer');
     };
 
     const handleMovementSubmit = (e) => {
@@ -405,7 +430,9 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                         <span className="whitespace-nowrap">{req.date} at {req.time}</span> <span className="text-gray-300">•</span> <span className="text-blue-600 whitespace-nowrap">{req.requestedAt}</span>
                                                     </div>
                                                 </div>
-                                                <button className="w-full 2xl:w-auto bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900 font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all text-sm flex-shrink-0 whitespace-nowrap">
+                                                <button 
+                                                    onClick={() => handleApproveRequest(req)}
+                                                    className="w-full 2xl:w-auto bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900 font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all text-sm flex-shrink-0 whitespace-nowrap">
                                                     Approve & Transfer
                                                 </button>
                                             </div>

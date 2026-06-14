@@ -18,21 +18,31 @@ class StockTransferController extends Controller
         $availableItems = Item::where('stock_qty', '>', 0)
             ->get(['id', 'name', 'sku', 'stock_qty as stock', 'cost as capitalPrice', 'price as sellingPrice']);
 
-        $pendingRequisitions = StockTransfer::with(['toBranch', 'requester', 'items.item'])
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'desc')
+        $pendingRequisitions = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('branch_requisitions')
+            ->leftJoin('branches', 'branch_requisitions.branch_id', '=', 'branches.id')
+            ->leftJoin('users', 'branch_requisitions.user_id', '=', 'users.id')
+            ->select(
+                'branch_requisitions.*',
+                'branches.name as branch_name',
+                'users.name as cashier_name'
+            )
+            ->where('branch_requisitions.status', 'pending')
+            ->orderBy('branch_requisitions.created_at', 'desc')
             ->get()
-            ->map(function ($transfer) {
-                $firstItem = $transfer->items->first();
+            ->map(function ($req) {
+                $createdAt = \Carbon\Carbon::parse($req->created_at);
                 return [
-                    'id' => $transfer->id,
-                    'branch' => $transfer->toBranch ? $transfer->toBranch->name : 'Unknown Branch',
-                    'cashier' => $transfer->requester ? $transfer->requester->name : 'Unknown',
-                    'item' => $firstItem && $firstItem->item ? $firstItem->item->name : 'Multiple Items',
-                    'qty' => $firstItem ? $firstItem->quantity : 0,
-                    'date' => $transfer->created_at->format('M j, Y'),
-                    'time' => $transfer->created_at->format('h:i A'),
-                    'requestedAt' => $transfer->created_at->diffForHumans(),
+                    'id' => $req->id,
+                    'branch' => $req->branch_name ?? 'Unknown Branch',
+                    'branch_id' => $req->branch_id,
+                    'cashier' => $req->cashier_name ?? 'Unknown',
+                    'item' => $req->item_name,
+                    'sku' => $req->sku,
+                    'qty' => $req->quantity,
+                    'date' => $createdAt->format('M j, Y'),
+                    'time' => $createdAt->format('h:i A'),
+                    'requestedAt' => $createdAt->diffForHumans(),
                 ];
             });
 
@@ -115,6 +125,7 @@ class StockTransferController extends Controller
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|exists:items,id',
             'items.*.transferQty' => 'required|integer|min:1',
+            'requisition_id' => 'nullable|integer',
         ]);
 
         $transfer = StockTransfer::create([
@@ -221,6 +232,13 @@ class StockTransferController extends Controller
                     }
                 // Let the error bubble up natively
             }
+        }
+
+        if ($request->has('requisition_id') && $request->requisition_id) {
+            \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                ->table('branch_requisitions')
+                ->where('id', $request->requisition_id)
+                ->update(['status' => 'fulfilled']);
         }
 
         \App\Models\ActivityLog::create([

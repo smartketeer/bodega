@@ -19,7 +19,10 @@ class DashboardController extends Controller
             return $item->stock_qty * $item->price;
         });
 
-        $pendingRequests = StockTransfer::where('status', 'Pending')->count();
+        $pendingRequests = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('branch_requisitions')
+            ->where('status', 'pending')
+            ->count();
 
         $thirtyDaysAgo = Carbon::now()->subDays(30);
         $deadStockCount = Item::where('stock_qty', '>', 0)

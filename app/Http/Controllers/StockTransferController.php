@@ -363,8 +363,15 @@ class StockTransferController extends Controller
 
         $item = new \App\Models\Item();
         $item->name = $validated['name'];
-        $item->sku = $validated['sku'] ?? null;
         $item->category_id = $validated['category_id'];
+        
+        $sku = $validated['sku'] ?? null;
+        if (empty($sku) || \App\Services\SkuGenerator::skuExists($sku)) {
+            $item->sku = \App\Services\SkuGenerator::generate($item);
+        } else {
+            $item->sku = $sku;
+        }
+        
         $item->cost = $validated['capital_price'];
         $item->price = $validated['selling_price'];
         $item->stock_qty = $validated['initial_stocks'];

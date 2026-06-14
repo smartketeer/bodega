@@ -353,7 +353,29 @@ class StockTransferController extends Controller
     public function storeItem(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    $existsInLocal = \App\Models\Item::whereRaw('LOWER(name) = ?', [strtolower($value)])->exists();
+                    if ($existsInLocal) {
+                        $fail('This item name already exists in Bodega.');
+                        return;
+                    }
+                    try {
+                        $existsInPos = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('items')
+                            ->whereRaw('LOWER(name) = ?', [strtolower($value)])
+                            ->exists();
+                        if ($existsInPos) {
+                            $fail('This item name already exists in the POS system.');
+                        }
+                    } catch (\Exception $e) {
+                        // ignore connection failure
+                    }
+                }
+            ],
             'sku' => 'nullable|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'capital_price' => 'required|numeric|min:0',

@@ -54,7 +54,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         if (class_exists(\App\Models\StockTransfer::class)) {
-            $pendingTransfers = \App\Models\StockTransfer::where('status', 'pending')
+            $pendingTransfers = \App\Models\StockTransfer::where('bdg_status', 'pending')
                 ->with('toBranch')
                 ->latest('created_at')
                 ->take(2)
@@ -67,7 +67,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $notifId++,
                     'type' => 'transfer',
                     'title' => 'Pending Transfer',
-                    'message' => 'Transfer ' . $transfer->reference_number . ' awaits approval.',
+                    'message' => 'Transfer ' . $transfer->bdg_reference_number . ' awaits approval.',
                     'time' => str_replace('from now', 'ago', $timeLabel)
                 ];
             }

@@ -110,10 +110,10 @@ export default function BoutiqueLayout({ user, children }) {
                         </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <button className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors">
+                        <a href="https://boutique-pos.com/admin" className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors">
                             <ArrowLeft size={20} className="text-gray-500" />
                             Back to Main Inventory
-                        </button>
+                        </a>
                     </div>
                 </div>
             </aside>

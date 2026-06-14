@@ -441,4 +441,23 @@ class StockTransferController extends Controller
 
         return redirect()->back();
     }
+
+    public function rejectRequisition(Request $request, $id)
+    {
+        \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('branch_requisitions')
+            ->where('id', $id)
+            ->update([
+                'status' => 'rejected',
+                'is_notified' => false
+            ]);
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'requisition_rejected',
+            'description' => "Rejected branch requisition #{$id}",
+        ]);
+
+        return redirect()->back()->with('success', 'Requisition rejected successfully.');
+    }
 }

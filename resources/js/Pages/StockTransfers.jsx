@@ -23,6 +23,8 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [selectedItems, setSelectedItems] = useState([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [fulfillingRequisitionId, setFulfillingRequisitionId] = useState(null);
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectingRequisition, setRejectingRequisition] = useState(null);
     
     // Add Dropdown and Modals
     const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
@@ -495,11 +497,21 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                         <span className="whitespace-nowrap">{req.date} at {req.time}</span> <span className="text-gray-300">•</span> <span className="text-blue-600 whitespace-nowrap">{req.requestedAt}</span>
                                                     </div>
                                                 </div>
-                                                <button 
-                                                    onClick={() => handleApproveRequest(req)}
-                                                    className="w-full 2xl:w-auto bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900 font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all text-sm flex-shrink-0 whitespace-nowrap">
-                                                    Approve & Transfer
-                                                </button>
+                                                <div className="flex gap-2 w-full 2xl:w-auto">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setRejectingRequisition(req);
+                                                            setIsRejectModalOpen(true);
+                                                        }}
+                                                        className="flex-1 2xl:flex-none border border-red-200 text-red-600 hover:bg-red-50 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-sm whitespace-nowrap">
+                                                        Reject
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleApproveRequest(req)}
+                                                        className="flex-1 2xl:flex-none bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-900 font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all text-sm flex-shrink-0 whitespace-nowrap">
+                                                        Approve & Transfer
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -923,6 +935,48 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                     </div>
                 </div>
             )}
+            {/* Reject Requisition Confirmation Modal */}
+            {isRejectModalOpen && rejectingRequisition && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                        <button 
+                            onClick={() => setIsRejectModalOpen(false)}
+                            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+                        
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Reject Request?</h3>
+                        <p className="text-gray-600 mb-6 text-sm">
+                            Are you sure you want to reject the request for <span className="font-bold text-gray-900">{rejectingRequisition.qty}x {rejectingRequisition.item}</span> from <span className="font-bold">{rejectingRequisition.branch}</span>? This action cannot be undone.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsRejectModalOpen(false)}
+                                className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    router.post(`/stock-transfers/reject-requisition/${rejectingRequisition.id}`, {}, {
+                                        preserveScroll: true,
+                                        onSuccess: () => {
+                                            setIsRejectModalOpen(false);
+                                            setRejectingRequisition(null);
+                                        }
+                                    });
+                                }}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm"
+                            >
+                                Yes, Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </BoutiqueLayout>
     );
 }

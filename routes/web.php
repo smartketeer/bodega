@@ -17,6 +17,7 @@ Route::delete('/inventory-masterlist/{id}/image', [InventoryMasterlistController
 
 Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index']);
 Route::post('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'store']);
+Route::post('/stock-transfers/reject-requisition/{id}', [\App\Http\Controllers\StockTransferController::class, 'rejectRequisition']);
 Route::post('/stock-in', [\App\Http\Controllers\StockTransferController::class, 'stockIn']);
 Route::post('/stock-out', [\App\Http\Controllers\StockTransferController::class, 'stockOut']);
 Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjust']);

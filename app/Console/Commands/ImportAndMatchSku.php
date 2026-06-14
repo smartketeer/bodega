@@ -89,16 +89,35 @@ class ImportAndMatchSku extends Command
                 return 0;
             }
 
-            // Step 4: Apply SKUs
+            // Step 4: Create backup of current SKUs
+            $this->info("\n💾 Creating backup of current SKUs...");
+            $backupFile = storage_path('app/sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json');
+            $backupData = $bodegaItems->map(fn($item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'original_sku' => $item->sku,
+            ]);
+            file_put_contents($backupFile, json_encode($backupData, JSON_PRETTY_PRINT));
+            $this->info("   Backup saved to: {$backupFile}");
+
+            // Step 5: Apply SKUs
             $this->info("\n💾 Applying SKUs...");
             $updated = 0;
+            $changes = collect();
 
             // Process perfect matches
             foreach ($matches['perfect'] as $match) {
                 if ($match['boutique']->sku) {
                     $item = Item::find($match['bodega']->id);
+                    $originalSku = $item->sku;
                     $item->sku = $match['boutique']->sku;
                     $item->save();
+                    $changes->push([
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'original_sku' => $originalSku,
+                        'new_sku' => $item->sku,
+                    ]);
                     $updated++;
                     $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
                 }
@@ -115,14 +134,22 @@ class ImportAndMatchSku extends Command
 
                 if ($confirm) {
                     $item = Item::find($match['bodega']->id);
+                    $originalSku = $item->sku;
                     $item->sku = $match['boutique']->sku;
                     $item->save();
+                    $changes->push([
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'original_sku' => $originalSku,
+                        'new_sku' => $item->sku,
+                    ]);
                     $updated++;
                     $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
                 }
             }
 
             $this->info("\n✅ Done! Updated {$updated} items with SKUs!");
+            $this->info("\n💡 To rollback these changes, run: php artisan inventory:rollback-sku");
 
             return 0;
 

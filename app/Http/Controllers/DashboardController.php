@@ -32,9 +32,8 @@ class DashboardController extends Controller
         // Exclude POS-specific cashier activities
         $excludedEvents = [
             'Sale Completed', 'sale_completed', 
-            'Auth Logout', 'auth_logout', 
-            'Auth Login', 'auth_login', 
-            'Sale Voided', 'sale_voided', 
+            'transaction_completed',
+            'stock_restock',
             'void_transaction'
         ];
 

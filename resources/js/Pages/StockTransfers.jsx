@@ -67,6 +67,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [selectedItemsForDeletion, setSelectedItemsForDeletion] = useState([]);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [itemsToDelete, setItemsToDelete] = useState([]);
+    const [isDeletionMode, setIsDeletionMode] = useState(false);
 
     const toggleItemSelection = (id) => {
         setSelectedItemsForDeletion(prev => 
@@ -89,6 +90,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                 setIsDeleteModalOpen(false);
                 setItemsToDelete([]);
                 setSelectedItemsForDeletion([]);
+                setIsDeletionMode(false);
             }
         });
     };
@@ -552,41 +554,81 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <h3 className="text-lg font-bold text-gray-900">Adjust Product Details</h3>
                                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                                        {selectedItemsForDeletion.length > 0 && (
-                                            <button 
-                                                onClick={() => {
-                                                    setItemsToDelete(selectedItemsForDeletion);
-                                                    setIsDeleteModalOpen(true);
-                                                }}
-                                                className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-bold py-2 px-4 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
-                                            >
-                                                <Trash2 size={16} /> Delete Selected ({selectedItemsForDeletion.length})
-                                            </button>
-                                        )}
-                                        <div className="relative w-full sm:w-72">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                            <input 
-                                                type="text"
-                                                className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
-                                                placeholder="Search by name or SKU..."
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                            />
+                                        <div className="relative w-full sm:w-72 flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                <input 
+                                                    type="text"
+                                                    className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
+                                                    placeholder="Search by name or SKU..."
+                                                    value={searchQuery}
+                                                    onChange={e => setSearchQuery(e.target.value)}
+                                                />
+                                            </div>
+                                            {isDeletionMode ? (
+                                                <button 
+                                                    onClick={() => {
+                                                        setIsDeletionMode(false);
+                                                        setSelectedItemsForDeletion([]);
+                                                    }}
+                                                    className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold py-2 px-4 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                                                >
+                                                    <X size={16} /> Cancel
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => setIsDeletionMode(true)}
+                                                    className="bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 font-bold py-2 px-4 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                                                >
+                                                    <Trash2 size={16} /> Delete
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto flex-1">
                                     <table className="w-full text-left border-collapse min-w-full">
                                         <thead>
+                                            {isDeletionMode && (
+                                                <tr className="bg-gray-100 border-b border-gray-200">
+                                                    <td colSpan="6" className="px-5 py-3">
+                                                        <div className="flex justify-between items-center w-full">
+                                                            <span className="text-red-500 font-bold text-sm">Tap items to mark for deletion</span>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => toggleAllSelection(paginatedItems)}
+                                                                    className="bg-white text-red-500 border border-gray-200 hover:bg-gray-50 font-bold py-1.5 px-4 rounded-full text-xs shadow-sm"
+                                                                >
+                                                                    Select All
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (selectedItemsForDeletion.length > 0) {
+                                                                            setItemsToDelete(selectedItemsForDeletion);
+                                                                            setIsDeleteModalOpen(true);
+                                                                        }
+                                                                    }}
+                                                                    disabled={selectedItemsForDeletion.length === 0}
+                                                                    className={`font-bold py-1.5 px-4 rounded-full text-xs shadow-sm flex items-center gap-1 transition-opacity ${selectedItemsForDeletion.length > 0 ? 'bg-red-400 hover:bg-red-500 text-white' : 'bg-red-400/50 text-white cursor-not-allowed'}`}
+                                                                >
+                                                                    <Trash2 size={14} /> Delete
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
                                             <tr className="bg-white border-b border-gray-100">
-                                                <th className="px-5 py-4 w-12">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                        checked={paginatedItems.length > 0 && selectedItemsForDeletion.length === paginatedItems.length}
-                                                        onChange={() => toggleAllSelection(paginatedItems)}
-                                                    />
-                                                </th>
+                                                {isDeletionMode && (
+                                                    <th className="px-5 py-4 w-12">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            checked={paginatedItems.length > 0 && selectedItemsForDeletion.length === paginatedItems.length}
+                                                            onChange={() => toggleAllSelection(paginatedItems)}
+                                                        />
+                                                    </th>
+                                                )}
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Product Name</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-32">SKU</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-40">Capital Price</th>
@@ -599,7 +641,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                 if (editingItemId === item.id) {
                                                     return (
                                                         <tr key={item.id} className="hover:bg-gray-50/50 transition-colors bg-gray-50/30">
-                                                            <td className="px-5 py-3"></td>
+                                                            {isDeletionMode && <td className="px-5 py-3"></td>}
                                                             <td className="px-5 py-3">
                                                                 <input 
                                                                     type="text" 
@@ -647,14 +689,16 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
                                                 return (
                                                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-5 py-4">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                checked={selectedItemsForDeletion.includes(item.id)}
-                                                                onChange={() => toggleItemSelection(item.id)}
-                                                            />
-                                                        </td>
+                                                        {isDeletionMode && (
+                                                            <td className="px-5 py-4">
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                    checked={selectedItemsForDeletion.includes(item.id)}
+                                                                    onChange={() => toggleItemSelection(item.id)}
+                                                                />
+                                                            </td>
+                                                        )}
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">{item.name}</td>
                                                         <td className="px-5 py-4 text-sm font-medium text-gray-500">{item.sku || '—'}</td>
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">₱{item.capitalPrice}</td>
@@ -669,16 +713,6 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                                     className="px-3 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
                                                                 >
                                                                     <Edit2 size={14} /> Edit
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        setItemsToDelete([item.id]);
-                                                                        setIsDeleteModalOpen(true);
-                                                                    }}
-                                                                    className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-                                                                    title="Delete Item"
-                                                                >
-                                                                    <Trash2 size={14} />
                                                                 </button>
                                                             </div>
                                                         </td>

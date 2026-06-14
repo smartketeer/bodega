@@ -26,8 +26,8 @@ class ImportAndMatchSku extends Command
             $boutiqueItems = DB::connection('boutique_pos')->table('items')->get(['id', 'name', 'sku', 'price']);
             $this->info("   Found {$boutiqueItems->count()} items in Boutique-POS");
 
-            $bodegaItems = Item::all(['id', 'name', 'sku', 'price']);
-            $this->info("   Found {$bodegaItems->count()} items in Bodega");
+            $bodegaItems = Item::all(['id', 'name', 'sku', 'price'])->filter(fn($item) => empty($item->sku))->values();
+            $this->info("   Found " . Item::count() . " total items in Bodega, {$bodegaItems->count()} without SKU");
 
             // Step 2: Match items
             $this->info("\n🔍 Matching items using fuzzy string matching...");

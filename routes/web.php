@@ -9,29 +9,28 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryMasterlistController;
 
-Route::get('/', [DashboardController::class, 'bodegaDashboard']);
-Route::get('/bodega-dashboard', [DashboardController::class, 'bodegaDashboard']);
-Route::get('/inventory-masterlist', [InventoryMasterlistController::class, 'index']);
-Route::post('/inventory-masterlist/{id}/image', [InventoryMasterlistController::class, 'uploadImage']);
-Route::delete('/inventory-masterlist/{id}/image', [InventoryMasterlistController::class, 'deleteImage']);
-
-Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index']);
-Route::post('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'store']);
-Route::post('/stock-transfers/reject-requisition/{id}', [\App\Http\Controllers\StockTransferController::class, 'rejectRequisition']);
-Route::post('/stock-in', [\App\Http\Controllers\StockTransferController::class, 'stockIn']);
-Route::post('/stock-out', [\App\Http\Controllers\StockTransferController::class, 'stockOut']);
-Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjust']);
-Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
-Route::post('/items/bulk-delete', [\App\Http\Controllers\StockTransferController::class, 'bulkDelete']);
-Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
-
-
-Route::get('/dead-stock', [InventoryAnalyticsController::class, 'deadStock']);
-Route::get('/reports', [InventoryAnalyticsController::class, 'reports']);
-
-Route::get('/dashboard', [DashboardController::class, 'storeDashboard'])->name('dashboard');
-
 Route::middleware('auth')->group(function () {
+    Route::get('/', [DashboardController::class, 'bodegaDashboard']);
+    Route::get('/bodega-dashboard', [DashboardController::class, 'bodegaDashboard']);
+    Route::get('/inventory-masterlist', [InventoryMasterlistController::class, 'index']);
+    Route::post('/inventory-masterlist/{id}/image', [InventoryMasterlistController::class, 'uploadImage']);
+    Route::delete('/inventory-masterlist/{id}/image', [InventoryMasterlistController::class, 'deleteImage']);
+
+    Route::get('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'index']);
+    Route::post('/stock-transfers', [\App\Http\Controllers\StockTransferController::class, 'store']);
+    Route::post('/stock-transfers/reject-requisition/{id}', [\App\Http\Controllers\StockTransferController::class, 'rejectRequisition']);
+    Route::post('/stock-in', [\App\Http\Controllers\StockTransferController::class, 'stockIn']);
+    Route::post('/stock-out', [\App\Http\Controllers\StockTransferController::class, 'stockOut']);
+    Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjust']);
+    Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
+    Route::post('/items/bulk-delete', [\App\Http\Controllers\StockTransferController::class, 'bulkDelete']);
+    Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
+
+    Route::get('/dead-stock', [InventoryAnalyticsController::class, 'deadStock']);
+    Route::get('/reports', [InventoryAnalyticsController::class, 'reports']);
+
+    Route::get('/dashboard', [DashboardController::class, 'storeDashboard'])->name('dashboard');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

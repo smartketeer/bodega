@@ -9,15 +9,17 @@ class StockTransferItem extends Model
 {
     use HasFactory;
 
+    protected $table = 'bodega_stock_transfer_items';
+    protected $primaryKey = 'bdg_id';
     protected $guarded = [];
 
     public function transfer()
     {
-        return $this->belongsTo(StockTransfer::class, 'stock_transfer_id');
+        return $this->belongsTo(StockTransfer::class, 'bdg_transfer_id', 'bdg_id');
     }
 
     public function item()
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Item::class, 'bdg_item_id', 'bdg_id');
     }
 }

@@ -19,28 +19,28 @@ class InventoryAnalyticsController extends Controller
         $branchStocks = BranchItemStock::with(['branch', 'item'])->get();
 
         $totalInventoryValue = $items->sum(function ($item) {
-            return $item->stock_qty * $item->price;
+            return $item->bdg_stock_qty * $item->bdg_price;
         });
 
-        $totalItemsInStock = $items->sum('stock_qty');
+        $totalItemsInStock = $items->sum('bdg_stock_qty');
 
-        $topByStock = $items->sortByDesc('stock_qty')->take(5)->map(function ($item) {
+        $topByStock = $items->sortByDesc('bdg_stock_qty')->take(5)->map(function ($item) {
             return [
-                'id' => $item->id,
-                'name' => $item->name,
-                'sku' => $item->sku,
-                'qty' => $item->stock_qty,
-                'value' => $item->stock_qty * $item->price
+                'id' => $item->bdg_id,
+                'name' => $item->bdg_name,
+                'sku' => $item->bdg_sku,
+                'qty' => $item->bdg_stock_qty,
+                'value' => $item->bdg_stock_qty * $item->bdg_price
             ];
         })->values();
 
         $topByCapital = $items->map(function ($item) {
-            $value = $item->stock_qty * $item->price;
+            $value = $item->bdg_stock_qty * $item->bdg_price;
             return [
-                'id' => $item->id,
-                'name' => $item->name,
-                'sku' => $item->sku,
-                'qty' => $item->stock_qty,
+                'id' => $item->bdg_id,
+                'name' => $item->bdg_name,
+                'sku' => $item->bdg_sku,
+                'qty' => $item->bdg_stock_qty,
                 'value' => $value
             ];
         })->sortByDesc('value')->take(5)->values();
@@ -86,7 +86,7 @@ class InventoryAnalyticsController extends Controller
         $thirtyDaysAgo = Carbon::now()->subDays(30);
         
         $deadStocks = Item::with('category')
-            ->where('stock_qty', '>', 0)
+            ->where('bdg_stock_qty', '>', 0)
             ->where('updated_at', '<', $thirtyDaysAgo)
             ->get();
 
@@ -98,13 +98,13 @@ class InventoryAnalyticsController extends Controller
             elseif ($daysStagnant > 45) $status = 'Critical';
             
             return [
-                'id' => $item->id,
-                'name' => $item->name,
-                'sku' => $item->sku,
+                'id' => $item->bdg_id,
+                'name' => $item->bdg_name,
+                'sku' => $item->bdg_sku,
                 'daysStagnant' => $daysStagnant,
-                'qty' => $item->stock_qty,
-                'capitalLocked' => $item->stock_qty * $item->price,
-                'category' => $item->category ? $item->category->name : 'Uncategorized',
+                'qty' => $item->bdg_stock_qty,
+                'capitalLocked' => $item->bdg_stock_qty * $item->bdg_price,
+                'category' => $item->category ? $item->category->bdg_name : 'Uncategorized',
                 'status' => $status
             ];
         })->values();

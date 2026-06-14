@@ -16,7 +16,7 @@ class DashboardController extends Controller
     {
         $items = Item::all();
         $capitalTiedUp = $items->sum(function($item) {
-            return $item->stock_qty * $item->price;
+            return $item->bdg_stock_qty * $item->bdg_price;
         });
 
         $pendingRequests = \Illuminate\Support\Facades\DB::connection('boutique_pos')
@@ -25,7 +25,7 @@ class DashboardController extends Controller
             ->count();
 
         $thirtyDaysAgo = Carbon::now()->subDays(30);
-        $deadStockCount = Item::where('stock_qty', '>', 0)
+        $deadStockCount = Item::where('bdg_stock_qty', '>', 0)
             ->where('updated_at', '<', $thirtyDaysAgo)
             ->count();
 
@@ -38,6 +38,7 @@ class DashboardController extends Controller
             'void_transaction'
         ];
 
+        // ActivityLog uses POS activity_logs table for now, since Bodega shares the POS database natively.
         $logs = ActivityLog::whereNotIn('event_type', $excludedEvents)
             ->orderBy('created_at', 'desc')
             ->take(6)

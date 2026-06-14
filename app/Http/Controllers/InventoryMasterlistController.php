@@ -12,36 +12,42 @@ class InventoryMasterlistController extends Controller
     public function index(Request $request)
     {
         $query = Item::with('category')
-            ->leftJoin('product_images', 'items.primary_image_id', '=', 'product_images.id')
-            ->select('items.*', 'product_images.path as primary_image_path');
+            ->leftJoin('product_images', 'bodega_items.bdg_primary_image_id', '=', 'product_images.id')
+            ->select('bodega_items.*', 'product_images.path as primary_image_path');
 
         if ($request->has('search') && $request->search) {
             $query->where(function($q) use ($request) {
-                $q->where('items.name', 'like', '%' . $request->search . '%')
-                  ->orWhere('items.sku', 'like', '%' . $request->search . '%');
+                $q->where('bodega_items.bdg_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('bodega_items.bdg_sku', 'like', '%' . $request->search . '%');
             });
         }
 
         if ($request->has('category') && $request->category !== 'all') {
-            $query->where('items.category_id', $request->category);
+            $query->where('bodega_items.bdg_category_id', $request->category);
         }
 
-        $items = $query->orderBy('items.name')->get()->map(function($item) {
+        $items = $query->orderBy('bodega_items.bdg_name')->get()->map(function($item) {
             return [
-                'id' => $item->id,
-                'name' => $item->name,
-                'sku' => $item->sku,
-                'price' => $item->price,
-                'cost' => $item->cost,
-                'stock_qty' => $item->stock_qty,
-                'is_service' => $item->is_service,
-                'category_name' => $item->category ? $item->category->name : 'Uncategorized',
-                'primary_image_id' => $item->primary_image_id,
+                'id' => $item->bdg_id,
+                'name' => $item->bdg_name,
+                'sku' => $item->bdg_sku,
+                'price' => $item->bdg_price,
+                'cost' => $item->bdg_cost,
+                'stock_qty' => $item->bdg_stock_qty,
+                'is_service' => $item->bdg_is_service,
+                'category_name' => $item->category ? $item->category->bdg_name : 'Uncategorized',
+                'primary_image_id' => $item->bdg_primary_image_id,
                 'primary_image_path' => $item->primary_image_path,
             ];
         });
         
-        $categories = Category::all();
+        $categories = Category::all()->map(function($cat) {
+            return [
+                'id' => $cat->bdg_id,
+                'name' => $cat->bdg_name,
+                'description' => $cat->bdg_description
+            ];
+        });
 
         return Inertia::render('InventoryMasterlist', [
             'itemsProp' => $items,
@@ -60,10 +66,10 @@ class InventoryMasterlistController extends Controller
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             
-            $path = $file->store('product-images/' . $item->id, 'public');
+            $path = $file->store('product-images/bodega-' . $item->bdg_id, 'public');
             
             $imageId = \Illuminate\Support\Facades\DB::table('product_images')->insertGetId([
-                'item_id' => $item->id,
+                'item_id' => 0, // 0 prevents foreign key crash if any, or null if nullable
                 'path' => $path,
                 'mime' => $file->getClientMimeType(),
                 'size_bytes' => $file->getSize(),
@@ -72,7 +78,7 @@ class InventoryMasterlistController extends Controller
             ]);
             
             $item->update([
-                'primary_image_id' => $imageId
+                'bdg_primary_image_id' => $imageId
             ]);
         }
 
@@ -83,8 +89,8 @@ class InventoryMasterlistController extends Controller
     {
         $item = Item::findOrFail($id);
 
-        if ($item->primary_image_id) {
-            $image = \Illuminate\Support\Facades\DB::table('product_images')->where('id', $item->primary_image_id)->first();
+        if ($item->bdg_primary_image_id) {
+            $image = \Illuminate\Support\Facades\DB::table('product_images')->where('id', $item->bdg_primary_image_id)->first();
             
             if ($image) {
                 // Delete the file from storage
@@ -93,7 +99,7 @@ class InventoryMasterlistController extends Controller
                 \Illuminate\Support\Facades\DB::table('product_images')->where('id', $image->id)->delete();
             }
 
-            $item->update(['primary_image_id' => null]);
+            $item->update(['bdg_primary_image_id' => null]);
         }
 
         return redirect()->back();

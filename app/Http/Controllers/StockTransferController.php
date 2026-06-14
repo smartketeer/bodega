@@ -15,8 +15,8 @@ class StockTransferController extends Controller
     {
         $branches = Branch::where('is_active', 1)->get(['id', 'name']);
         
-        $availableItems = Item::where('stock_qty', '>', 0)
-            ->get(['id', 'name', 'sku', 'stock_qty as stock', 'cost as capitalPrice', 'price as sellingPrice']);
+        $availableItems = Item::where('bdg_stock_qty', '>', 0)
+            ->get(['bdg_id as id', 'bdg_name as name', 'bdg_sku as sku', 'bdg_stock_qty as stock', 'bdg_cost as capitalPrice', 'bdg_price as sellingPrice']);
 
         $pendingRequisitions = \Illuminate\Support\Facades\DB::connection('boutique_pos')
             ->table('branch_requisitions')
@@ -46,8 +46,6 @@ class StockTransferController extends Controller
                 ];
             });
 
-        // Using stock_transfers for history, or we can use stock_logs.
-        // Let's use stock_transfers for a unified history of these specific transactions.
         $transferHistory = StockTransfer::with(['fromBranch', 'toBranch', 'requester', 'items.item'])
             ->orderBy('created_at', 'desc')
             ->take(20)
@@ -55,53 +53,53 @@ class StockTransferController extends Controller
             ->map(function ($transfer) {
                 $firstItem = $transfer->items->first();
                 return [
-                    'id' => $transfer->reference_number,
+                    'id' => $transfer->bdg_reference_number,
                     'date' => $transfer->created_at->format('M j, Y'),
                     'time' => $transfer->created_at->format('h:i A'),
                     'cashier' => $transfer->requester ? $transfer->requester->name : 'Unknown',
-                    'item' => $firstItem && $firstItem->item ? $firstItem->item->name : 'Multiple Items',
-                    'qty' => $firstItem ? $firstItem->quantity : 0,
+                    'item' => $firstItem && $firstItem->item ? $firstItem->item->bdg_name : 'Multiple Items',
+                    'qty' => $firstItem ? $firstItem->bdg_quantity : 0,
                     'from' => $transfer->fromBranch ? $transfer->fromBranch->name : 'Main Bodega',
                     'to' => $transfer->toBranch ? $transfer->toBranch->name : 'Main Bodega',
-                    'status' => ucfirst($transfer->status),
+                    'status' => ucfirst($transfer->bdg_status),
                 ];
             });
 
-        $stockInHistory = \Illuminate\Support\Facades\DB::table('stock_logs')
-            ->join('items', 'stock_logs.item_id', '=', 'items.id')
-            ->select('stock_logs.*', 'items.name as item_name')
-            ->where('stock_logs.reason', 'stock_in')
-            ->orderBy('stock_logs.created_at', 'desc')
+        $stockInHistory = \Illuminate\Support\Facades\DB::table('bodega_stock_logs')
+            ->join('bodega_items', 'bodega_stock_logs.bdg_item_id', '=', 'bodega_items.bdg_id')
+            ->select('bodega_stock_logs.*', 'bodega_items.bdg_name as item_name')
+            ->where('bodega_stock_logs.bdg_reason', 'stock_in')
+            ->orderBy('bodega_stock_logs.created_at', 'desc')
             ->take(10)
             ->get()
             ->map(function ($log) {
                 return [
-                    'id' => $log->id,
+                    'id' => $log->bdg_id,
                     'date' => \Carbon\Carbon::parse($log->created_at)->format('n/j/Y, g:i:s A'),
                     'item' => $log->item_name,
                     'type' => 'RECEIPT',
-                    'change' => '+' . $log->change_qty,
-                    'new' => $log->new_qty,
+                    'change' => '+' . $log->bdg_change_qty,
+                    'new' => $log->bdg_new_qty,
                 ];
             });
 
-        $stockOutHistory = \Illuminate\Support\Facades\DB::table('stock_logs')
-            ->join('items', 'stock_logs.item_id', '=', 'items.id')
-            ->select('stock_logs.*', 'items.name as item_name')
-            ->where('stock_logs.reason', 'like', 'stock_out%')
-            ->orderBy('stock_logs.created_at', 'desc')
+        $stockOutHistory = \Illuminate\Support\Facades\DB::table('bodega_stock_logs')
+            ->join('bodega_items', 'bodega_stock_logs.bdg_item_id', '=', 'bodega_items.bdg_id')
+            ->select('bodega_stock_logs.*', 'bodega_items.bdg_name as item_name')
+            ->where('bodega_stock_logs.bdg_reason', 'like', 'stock_out%')
+            ->orderBy('bodega_stock_logs.created_at', 'desc')
             ->take(10)
             ->get()
             ->map(function ($log) {
-                $parts = explode(':', $log->reason);
+                $parts = explode(':', $log->bdg_reason);
                 $type = isset($parts[1]) ? strtoupper(trim($parts[1])) : 'ISSUE';
                 return [
-                    'id' => $log->id,
+                    'id' => $log->bdg_id,
                     'date' => \Carbon\Carbon::parse($log->created_at)->format('n/j/Y, g:i:s A'),
                     'item' => $log->item_name,
                     'type' => $type,
-                    'change' => $log->change_qty,
-                    'new' => $log->new_qty,
+                    'change' => $log->bdg_change_qty,
+                    'new' => $log->bdg_new_qty,
                 ];
             });
 
@@ -123,39 +121,40 @@ class StockTransferController extends Controller
         $request->validate([
             'to_branch_id' => 'required|exists:branches,id',
             'items' => 'required|array|min:1',
-            'items.*.id' => 'required|exists:items,id',
+            // React passes back the bdg_id mapped as id
+            'items.*.id' => 'required|exists:bodega_items,bdg_id',
             'items.*.transferQty' => 'required|integer|min:1',
             'requisition_id' => 'nullable|integer',
         ]);
 
         $transfer = StockTransfer::create([
-            'reference_number' => 'TRX-' . strtoupper(uniqid()),
-            'from_branch_id' => null, // Main Bodega
-            'to_branch_id' => $request->to_branch_id,
-            // 'requested_by' => auth()->id(), // Uncomment if auth is working
-            'status' => 'completed',
+            'bdg_reference_number' => 'TRX-' . strtoupper(uniqid()),
+            'bdg_from_branch_id' => null, // Main Bodega
+            'bdg_to_branch_id' => $request->to_branch_id,
+            // 'bdg_requested_by' => auth()->id(), // Uncomment if auth is working
+            'bdg_status' => 'completed',
         ]);
 
         foreach ($request->items as $reqItem) {
             $transfer->items()->create([
-                'item_id' => $reqItem['id'],
-                'quantity' => $reqItem['transferQty'],
+                'bdg_item_id' => $reqItem['id'],
+                'bdg_quantity' => $reqItem['transferQty'],
             ]);
 
             // Adjust main bodega stock
             $item = Item::find($reqItem['id']);
             if ($item) {
-                $item->decrement('stock_qty', $reqItem['transferQty']);
+                $item->decrement('bdg_stock_qty', $reqItem['transferQty']);
 
                 // --- LIVE POS SYNCING ---
                     // Try to find the matching item in the live POS database
                     $posItemQuery = \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('items');
-                    if (!empty($item->sku)) {
+                    if (!empty($item->bdg_sku)) {
                         $posItemQuery->where(function($q) use ($item) {
-                            $q->where('sku', $item->sku)->orWhere('name', $item->name);
+                            $q->where('sku', $item->bdg_sku)->orWhere('name', $item->bdg_name);
                         });
                     } else {
-                        $posItemQuery->where('name', $item->name);
+                        $posItemQuery->where('name', $item->bdg_name);
                     }
                     $posItem = $posItemQuery->first();
 
@@ -183,9 +182,9 @@ class StockTransferController extends Controller
                     } else {
                         // Item doesn't exist in POS yet, let's create it!
                         $categoryName = 'Uncategorized';
-                        if ($item->category_id) {
-                            $localCategory = \App\Models\Category::find($item->category_id);
-                            if ($localCategory) $categoryName = $localCategory->name;
+                        if ($item->bdg_category_id) {
+                            $localCategory = \App\Models\Category::find($item->bdg_category_id);
+                            if ($localCategory) $categoryName = $localCategory->bdg_name;
                         }
 
                         $posCategory = \Illuminate\Support\Facades\DB::connection('boutique_pos')
@@ -209,10 +208,10 @@ class StockTransferController extends Controller
                         $posItemId = \Illuminate\Support\Facades\DB::connection('boutique_pos')
                             ->table('items')
                             ->insertGetId([
-                                'name' => $item->name,
-                                'sku' => $item->sku,
-                                'cost' => $item->cost,
-                                'price' => $item->price,
+                                'name' => $item->bdg_name,
+                                'sku' => $item->bdg_sku,
+                                'cost' => $item->bdg_cost,
+                                'price' => $item->bdg_price,
                                 'stock_qty' => $reqItem['transferQty'],
                                 'category_id' => $posCategoryId,
                                 'is_service' => 0,
@@ -253,25 +252,24 @@ class StockTransferController extends Controller
     public function stockIn(Request $request)
     {
         $request->validate([
-            'item_id' => 'required|exists:items,id',
+            'item_id' => 'required|exists:bodega_items,bdg_id',
             'quantity' => 'required|integer|min:1',
             'reference' => 'nullable|string',
             'notes' => 'nullable|string'
         ]);
 
         $item = Item::find($request->item_id);
-        $newQty = $item->stock_qty + $request->quantity;
+        $newQty = $item->bdg_stock_qty + $request->quantity;
         
-        $item->update(['stock_qty' => $newQty]);
+        $item->update(['bdg_stock_qty' => $newQty]);
 
-        \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
-            'item_id' => $item->id,
-            'change_qty' => $request->quantity,
-            'new_qty' => $newQty,
-            'reason' => 'stock_in',
-            'reference' => $request->reference,
-            'notes' => $request->notes,
-            'branch_id' => null, // Bodega
+        \Illuminate\Support\Facades\DB::table('bodega_stock_logs')->insert([
+            'bdg_item_id' => $item->bdg_id,
+            'bdg_change_qty' => $request->quantity,
+            'bdg_new_qty' => $newQty,
+            'bdg_reason' => 'stock_in',
+            'bdg_reference' => $request->reference,
+            'bdg_notes' => $request->notes,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -279,7 +277,7 @@ class StockTransferController extends Controller
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'stock_restock',
-            'description' => "Stock in: +{$request->quantity} for {$item->name}",
+            'description' => "Stock in: +{$request->quantity} for {$item->bdg_name}",
         ]);
 
         return redirect()->back()->with('success', 'Stock in successful!');
@@ -288,7 +286,7 @@ class StockTransferController extends Controller
     public function stockOut(Request $request)
     {
         $request->validate([
-            'item_id' => 'required|exists:items,id',
+            'item_id' => 'required|exists:bodega_items,bdg_id',
             'quantity' => 'required|integer|min:1',
             'reference' => 'nullable|string',
             'notes' => 'nullable|string',
@@ -297,21 +295,20 @@ class StockTransferController extends Controller
 
         $item = Item::find($request->item_id);
         
-        if ($item->stock_qty < $request->quantity) {
+        if ($item->bdg_stock_qty < $request->quantity) {
             return redirect()->back()->withErrors(['quantity' => 'Insufficient stock.']);
         }
 
-        $newQty = $item->stock_qty - $request->quantity;
-        $item->update(['stock_qty' => $newQty]);
+        $newQty = $item->bdg_stock_qty - $request->quantity;
+        $item->update(['bdg_stock_qty' => $newQty]);
 
-        \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
-            'item_id' => $item->id,
-            'change_qty' => -$request->quantity,
-            'new_qty' => $newQty,
-            'reason' => 'stock_out: ' . $request->reason,
-            'reference' => $request->reference,
-            'notes' => $request->notes,
-            'branch_id' => null, // Bodega
+        \Illuminate\Support\Facades\DB::table('bodega_stock_logs')->insert([
+            'bdg_item_id' => $item->bdg_id,
+            'bdg_change_qty' => -$request->quantity,
+            'bdg_new_qty' => $newQty,
+            'bdg_reason' => 'stock_out: ' . $request->reason,
+            'bdg_reference' => $request->reference,
+            'bdg_notes' => $request->notes,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -319,7 +316,7 @@ class StockTransferController extends Controller
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'stock_out',
-            'description' => "Stock out: -{$request->quantity} for {$item->name} ({$request->reason})",
+            'description' => "Stock out: -{$request->quantity} for {$item->bdg_name} ({$request->reason})",
         ]);
 
         return redirect()->back()->with('success', 'Stock out successful!');
@@ -328,7 +325,7 @@ class StockTransferController extends Controller
     public function adjust(Request $request)
     {
         $request->validate([
-            'item_id' => 'required|exists:items,id',
+            'item_id' => 'required|exists:bodega_items,bdg_id',
             'name' => 'required|string',
             'capitalPrice' => 'required|numeric',
             'sellingPrice' => 'required|numeric',
@@ -336,9 +333,9 @@ class StockTransferController extends Controller
 
         $item = Item::find($request->item_id);
         $item->update([
-            'name' => $request->name,
-            'cost' => $request->capitalPrice,
-            'price' => $request->sellingPrice,
+            'bdg_name' => $request->name,
+            'bdg_cost' => $request->capitalPrice,
+            'bdg_price' => $request->sellingPrice,
         ]);
 
         \App\Models\ActivityLog::create([
@@ -358,7 +355,7 @@ class StockTransferController extends Controller
                 'string',
                 'max:255',
                 function ($attribute, $value, $fail) {
-                    $existsInLocal = \App\Models\Item::whereRaw('LOWER(name) = ?', [strtolower($value)])->exists();
+                    $existsInLocal = \App\Models\Item::whereRaw('LOWER(bdg_name) = ?', [strtolower($value)])->exists();
                     if ($existsInLocal) {
                         $fail('This item name already exists in Bodega.');
                         return;
@@ -377,36 +374,36 @@ class StockTransferController extends Controller
                 }
             ],
             'sku' => 'nullable|string|max:255',
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'required|exists:bodega_categories,bdg_id',
             'capital_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'initial_stocks' => 'required|numeric|min:0',
         ]);
 
         $item = new \App\Models\Item();
-        $item->name = $validated['name'];
-        $item->category_id = $validated['category_id'];
+        $item->bdg_name = $validated['name'];
+        $item->bdg_category_id = $validated['category_id'];
         
         $sku = $validated['sku'] ?? null;
         if (empty($sku) || \App\Services\SkuGenerator::skuExists($sku)) {
-            $item->sku = \App\Services\SkuGenerator::generate($item);
+            $item->bdg_sku = \App\Services\SkuGenerator::generate($item);
         } else {
-            $item->sku = $sku;
+            $item->bdg_sku = $sku;
         }
         
-        $item->cost = $validated['capital_price'];
-        $item->price = $validated['selling_price'];
-        $item->stock_qty = $validated['initial_stocks'];
-        $item->is_service = 0;
+        $item->bdg_cost = $validated['capital_price'];
+        $item->bdg_price = $validated['selling_price'];
+        $item->bdg_stock_qty = $validated['initial_stocks'];
+        $item->bdg_is_service = 0;
         $item->save();
 
         if ($validated['initial_stocks'] > 0) {
-            \Illuminate\Support\Facades\DB::table('stock_logs')->insert([
-                'item_id' => $item->id,
-                'change_qty' => $validated['initial_stocks'],
-                'new_qty' => $validated['initial_stocks'],
-                'reason' => 'stock_in',
-                'reference' => 'Initial Stock',
+            \Illuminate\Support\Facades\DB::table('bodega_stock_logs')->insert([
+                'bdg_item_id' => $item->bdg_id,
+                'bdg_change_qty' => $validated['initial_stocks'],
+                'bdg_new_qty' => $validated['initial_stocks'],
+                'bdg_reason' => 'stock_in',
+                'bdg_reference' => 'Initial Stock',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -415,7 +412,7 @@ class StockTransferController extends Controller
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'item_added',
-            'description' => "Added new item: {$item->name}",
+            'description' => "Added new item: {$item->bdg_name}",
         ]);
 
         return redirect()->back();
@@ -429,14 +426,14 @@ class StockTransferController extends Controller
         ]);
 
         $category = new \App\Models\Category();
-        $category->name = $validated['name'];
-        $category->type = $validated['type'];
+        $category->bdg_name = $validated['name'];
+        $category->bdg_description = $validated['type'];
         $category->save();
 
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'category_added',
-            'description' => "Added new category: {$category->name}",
+            'description' => "Added new category: {$category->bdg_name}",
         ]);
 
         return redirect()->back();
@@ -465,10 +462,10 @@ class StockTransferController extends Controller
     {
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'exists:items,id',
+            'ids.*' => 'exists:bodega_items,bdg_id',
         ]);
 
-        \App\Models\Item::whereIn('id', $validated['ids'])->delete();
+        \App\Models\Item::whereIn('bdg_id', $validated['ids'])->delete();
 
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,

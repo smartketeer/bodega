@@ -15,6 +15,7 @@ class BranchItemStock extends Model
 
     public function item()
     {
-        return $this->belongsTo(Item::class);
+        // Points to the POS retail item instead of the Bodega item
+        return $this->belongsTo(PosItem::class, 'item_id', 'id');
     }
 }

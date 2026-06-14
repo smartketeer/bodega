@@ -37,7 +37,7 @@ class SkuGenerator
     public static function skuExists(string $sku): bool
     {
         // Check bodega database (local)
-        $existsInBodega = Item::where('sku', $sku)->exists();
+        $existsInBodega = Item::where('bdg_sku', $sku)->exists();
         
         // Check main POS database (gracefully skip if connection fails)
         $existsInPos = false;
@@ -52,12 +52,12 @@ class SkuGenerator
 
     private static function buildSku(Item $item, int $attempt = 0): string
     {
-        $category = Category::find($item->category_id);
+        $category = Category::find($item->bdg_category_id);
         
         // Get category code
         $categoryCode = 'GEN';
         if ($category) {
-            $categoryName = trim($category->name);
+            $categoryName = trim($category->bdg_name);
             if (isset(self::$categoryCodeMap[$categoryName])) {
                 $categoryCode = self::$categoryCodeMap[$categoryName];
             } else {
@@ -68,7 +68,7 @@ class SkuGenerator
         }
 
         // Generate item parts from name
-        $nameParts = self::extractNameParts($item->name);
+        $nameParts = self::extractNameParts($item->bdg_name);
         $itemSlug = implode('-', $nameParts);
 
         // Get next 4-digit number
@@ -105,7 +105,7 @@ class SkuGenerator
         $pattern = $categoryCode . '-%';
         
         // Get Bodega SKUs matching pattern
-        $bodegaSkus = Item::where('sku', 'like', $pattern)->pluck('sku')->toArray();
+        $bodegaSkus = Item::where('bdg_sku', 'like', $pattern)->pluck('bdg_sku')->toArray();
         
         // Get POS SKUs matching pattern
         $posSkus = [];

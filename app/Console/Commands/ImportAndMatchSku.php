@@ -13,6 +13,9 @@ class ImportAndMatchSku extends Command
 
     public function handle()
     {
+        ini_set('memory_limit', '512M'); // Increase memory limit
+        set_time_limit(0); // Disable time limit
+
         $this->info('==========================================');
         $this->info('Bodega SKU Import & Matching Tool');
         $this->info('==========================================');
@@ -20,10 +23,10 @@ class ImportAndMatchSku extends Command
         try {
             // Step 1: Get items from both databases
             $this->info("\n📥 Fetching items from Boutique-POS database...");
-            $boutiqueItems = DB::connection('boutique_pos')->table('items')->get(['id', 'name', 'sku', 'price'])->keyBy('id');
+            $boutiqueItems = DB::connection('boutique_pos')->table('items')->get(['id', 'name', 'sku', 'price']);
             $this->info("   Found {$boutiqueItems->count()} items in Boutique-POS");
 
-            $bodegaItems = Item::all(['id', 'name', 'sku', 'price'])->keyBy('id');
+            $bodegaItems = Item::all(['id', 'name', 'sku', 'price']);
             $this->info("   Found {$bodegaItems->count()} items in Bodega");
 
             // Step 2: Match items
@@ -165,7 +168,7 @@ class ImportAndMatchSku extends Command
         $perfectMatches = collect();
         $fuzzyMatches = collect();
         $noMatches = collect();
-        $usedBoutiqueIds = collect();
+        $usedBoutiqueIds = [];
 
         foreach ($bodegaItems as $bodegaItem) {
             $bodegaNameLower = strtolower(trim($bodegaItem->name));
@@ -175,7 +178,7 @@ class ImportAndMatchSku extends Command
 
             // First check for exact match
             foreach ($boutiqueItems as $boutiqueItem) {
-                if ($usedBoutiqueIds->contains($boutiqueItem->id)) continue;
+                if (in_array($boutiqueItem->id, $usedBoutiqueIds)) continue;
 
                 $boutiqueNameLower = strtolower(trim($boutiqueItem->name));
 
@@ -184,7 +187,7 @@ class ImportAndMatchSku extends Command
                         'bodega' => $bodegaItem,
                         'boutique' => $boutiqueItem,
                     ]);
-                    $usedBoutiqueIds->push($boutiqueItem->id);
+                    $usedBoutiqueIds[] = $boutiqueItem->id;
                     $foundPerfectMatch = true;
                     break;
                 }
@@ -208,7 +211,7 @@ class ImportAndMatchSku extends Command
                     'boutique' => $bestMatch,
                     'score' => $bestScore,
                 ]);
-                $usedBoutiqueIds->push($bestMatch->id);
+                $usedBoutiqueIds[] = $bestMatch->id;
             } else {
                 $noMatches->push($bodegaItem);
             }

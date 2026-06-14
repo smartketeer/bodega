@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import { 
     Send, FileText, History, CheckCircle2, Clock, Search, Layers, X, Package, 
-    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus 
+    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus, Trash2 
 } from 'lucide-react';
 
 export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory, stockInHistory, stockOutHistory, categories }) {
@@ -62,6 +62,36 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     // Inline Edit State
     const [editingItemId, setEditingItemId] = useState(null);
     const [editFormData, setEditFormData] = useState({ name: '', capitalPrice: '', sellingPrice: '' });
+
+    // Deletion State
+    const [selectedItemsForDeletion, setSelectedItemsForDeletion] = useState([]);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemsToDelete, setItemsToDelete] = useState([]);
+
+    const toggleItemSelection = (id) => {
+        setSelectedItemsForDeletion(prev => 
+            prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id]
+        );
+    };
+
+    const toggleAllSelection = (paginatedItemsList) => {
+        if (selectedItemsForDeletion.length === paginatedItemsList.length) {
+            setSelectedItemsForDeletion([]);
+        } else {
+            setSelectedItemsForDeletion(paginatedItemsList.map(item => item.id));
+        }
+    };
+
+    const handleDeleteConfirm = () => {
+        router.post('/items/bulk-delete', { ids: itemsToDelete }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsDeleteModalOpen(false);
+                setItemsToDelete([]);
+                setSelectedItemsForDeletion([]);
+            }
+        });
+    };
 
     // ── SKU Automation Logic ──
     const categoryCodeMap = {
@@ -521,21 +551,42 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
                                 <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                     <h3 className="text-lg font-bold text-gray-900">Adjust Product Details</h3>
-                                    <div className="relative w-full sm:w-72">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                        <input 
-                                            type="text"
-                                            className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
-                                            placeholder="Search by name or SKU..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                        />
+                                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                                        {selectedItemsForDeletion.length > 0 && (
+                                            <button 
+                                                onClick={() => {
+                                                    setItemsToDelete(selectedItemsForDeletion);
+                                                    setIsDeleteModalOpen(true);
+                                                }}
+                                                className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 font-bold py-2 px-4 rounded-xl shadow-sm transition-colors text-sm flex items-center gap-2 whitespace-nowrap"
+                                            >
+                                                <Trash2 size={16} /> Delete Selected ({selectedItemsForDeletion.length})
+                                            </button>
+                                        )}
+                                        <div className="relative w-full sm:w-72">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input 
+                                                type="text"
+                                                className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
+                                                placeholder="Search by name or SKU..."
+                                                value={searchQuery}
+                                                onChange={e => setSearchQuery(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto flex-1">
                                     <table className="w-full text-left border-collapse min-w-full">
                                         <thead>
                                             <tr className="bg-white border-b border-gray-100">
+                                                <th className="px-5 py-4 w-12">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={paginatedItems.length > 0 && selectedItemsForDeletion.length === paginatedItems.length}
+                                                        onChange={() => toggleAllSelection(paginatedItems)}
+                                                    />
+                                                </th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Product Name</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-32">SKU</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-40">Capital Price</th>
@@ -548,6 +599,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                 if (editingItemId === item.id) {
                                                     return (
                                                         <tr key={item.id} className="hover:bg-gray-50/50 transition-colors bg-gray-50/30">
+                                                            <td className="px-5 py-3"></td>
                                                             <td className="px-5 py-3">
                                                                 <input 
                                                                     type="text" 
@@ -595,17 +647,40 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
                                                 return (
                                                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-5 py-4">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                                checked={selectedItemsForDeletion.includes(item.id)}
+                                                                onChange={() => toggleItemSelection(item.id)}
+                                                            />
+                                                        </td>
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">{item.name}</td>
                                                         <td className="px-5 py-4 text-sm font-medium text-gray-500">{item.sku || '—'}</td>
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">₱{item.capitalPrice}</td>
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">₱{item.sellingPrice}</td>
                                                         <td className="px-5 py-4 text-right">
-                                                            <button 
-                                                                onClick={() => handleEditClick(item)}
-                                                                className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm bg-white"
-                                                            >
-                                                                <Edit2 size={14} /> Edit
-                                                            </button>
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setEditingItemId(item.id);
+                                                                        setEditFormData({ name: item.name, capitalPrice: item.capitalPrice, sellingPrice: item.sellingPrice });
+                                                                    }}
+                                                                    className="px-3 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                                                                >
+                                                                    <Edit2 size={14} /> Edit
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setItemsToDelete([item.id]);
+                                                                        setIsDeleteModalOpen(true);
+                                                                    }}
+                                                                    className="px-3 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-sm font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                                                                    title="Delete Item"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 );
@@ -971,6 +1046,40 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm"
                             >
                                 Yes, Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Item Confirmation Modal */}
+            {isDeleteModalOpen && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                        <button 
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+                        
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Item{itemsToDelete.length > 1 ? 's' : ''}?</h3>
+                        <p className="text-gray-600 mb-6 text-sm">
+                            Are you sure you want to permanently delete {itemsToDelete.length > 1 ? `these ${itemsToDelete.length} items` : 'this item'} from Bodega? This action cannot be undone.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleDeleteConfirm}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm"
+                            >
+                                Yes, Delete
                             </button>
                         </div>
                     </div>

@@ -460,4 +460,22 @@ class StockTransferController extends Controller
 
         return redirect()->back()->with('success', 'Requisition rejected successfully.');
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:items,id',
+        ]);
+
+        \App\Models\Item::whereIn('id', $validated['ids'])->delete();
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'items_deleted',
+            'description' => "Deleted " . count($validated['ids']) . " item(s) from Bodega",
+        ]);
+
+        return redirect()->back()->with('success', 'Items deleted successfully.');
+    }
 }

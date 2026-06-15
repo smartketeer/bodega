@@ -37,3 +37,14 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/debug-session', function () {
+    return response()->json([
+        'expected_cookie_name' => config('session.cookie'),
+        'received_cookie' => request()->cookie(config('session.cookie')) ? 'YES' : 'NO',
+        'all_cookies' => array_keys(request()->cookies->all()),
+        'database_connection' => config('database.connections.mysql.database'),
+        'session_driver' => config('session.driver'),
+        'app_key_match' => config('app.key') === 'base64:T3xyyd+wBc0cVlb7WA+yp57wAethBCvAZ5XcnAI1aeo=' ? 'YES' : 'NO'
+    ]);
+});

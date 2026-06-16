@@ -98,15 +98,15 @@ class ImportAndMatchSku extends Command
 
             // Step 3: Create backup
             $this->info("\n💾 Creating backup of current SKUs...");
-            $backupFile = storage_path('app/sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json');
+            $backupFileName = 'sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json';
             $allBodegaItems = Item::all(['bdg_id', 'bdg_name', 'bdg_sku']);
             $backupData = $allBodegaItems->map(fn($item) => [
                 'id' => $item->bdg_id,
                 'name' => $item->bdg_name,
                 'original_sku' => $item->bdg_sku,
             ]);
-            file_put_contents($backupFile, json_encode($backupData, JSON_PRETTY_PRINT));
-            $this->info("   Backup saved to: {$backupFile}");
+            Storage::disk('local')->put($backupFileName, json_encode($backupData, JSON_PRETTY_PRINT));
+            $this->info("   Backup saved to: {$backupFileName}");
 
             // Step 4: Apply selected matches
             $this->info("\n💾 Applying SKUs...");

@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     LayoutDashboard, 
     Box, 
@@ -21,6 +21,26 @@ export default function BoutiqueLayout({ user, children }) {
     const { globalNotifications } = usePage().props;
     
     const displayNotifications = globalNotifications || [];
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formattedDate = currentTime.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+
+    const formattedTime = currentTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
 
     const navItems = [
         { name: 'Bodega Dashboard', href: '/bodega-dashboard', icon: LayoutDashboard },
@@ -133,7 +153,7 @@ export default function BoutiqueLayout({ user, children }) {
                     </div>
                     
                     <div className="hidden md:flex items-center bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm">
-                        <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Sat, Jun 6, 2026 | 12:02 AM</span>
+                        <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">{formattedDate} | {formattedTime}</span>
                     </div>
                     
                     <div className="relative">

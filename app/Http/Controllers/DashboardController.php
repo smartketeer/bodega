@@ -38,24 +38,42 @@ class DashboardController extends Controller
         ];
 
         // ActivityLog uses POS activity_logs table for now, since Bodega shares the POS database natively.
-        $logs = ActivityLog::whereNotIn('event_type', $excludedEvents)
+        $logs = ActivityLog::with('actor')
+            ->whereNotIn('event_type', $excludedEvents)
             ->orderBy('created_at', 'desc')
-            ->take(6)
+            ->take(8)
             ->get();
         
         $activityStream = $logs->map(function ($log) {
             $type = 'activity';
-            if (str_contains(strtolower($log->event_type), 'transfer')) $type = 'transfer';
-            elseif (str_contains(strtolower($log->event_type), 'restock')) $type = 'restock';
-            elseif (str_contains(strtolower($log->event_type), 'alert')) $type = 'alert';
+            $eventTypeLower = strtolower($log->event_type);
+
+            if (str_contains($eventTypeLower, 'transfer')) $type = 'transfer';
+            elseif (str_contains($eventTypeLower, 'restock') || str_contains($eventTypeLower, 'added') || str_contains($eventTypeLower, 'created')) $type = 'restock';
+            elseif (str_contains($eventTypeLower, 'alert') || str_contains($eventTypeLower, 'revoked') || str_contains($eventTypeLower, 'rejected')) $type = 'alert';
             
-            $timeLabel = $log->created_at->isFuture() ? 'Just now' : $log->created_at->diffForHumans();
+            $actorName = $log->actor ? $log->actor->name : 'Admin User';
+            $timestamp = $log->created_at->format('M d, Y | h:i A');
+            $timeAgo = $log->created_at->isFuture() ? 'Just now' : $log->created_at->diffForHumans();
+            
+            // Refine generic descriptions to be more specific based on live events
+            $description = $log->description;
+            if ($log->event_type === 'Auth Login' || str_contains($description, 'logged into')) {
+                $description = "Logged into the system.";
+            } elseif ($log->event_type === 'Auth Logout' || str_contains($description, 'logged out')) {
+                $description = "Logged out of the system.";
+            } elseif (str_contains($description, 'inventory item via approved inventory management access')) {
+                // Remove generic part if it's too long, or leave it as is
+                $description = "Modified inventory via management access.";
+            }
             
             return [
                 'id' => $log->id,
                 'title' => ucwords(str_replace('_', ' ', $log->event_type)),
-                'description' => $log->description,
-                'time' => str_replace('from now', 'ago', $timeLabel),
+                'description' => $description,
+                'time' => str_replace('from now', 'ago', $timeAgo),
+                'timestamp' => $timestamp,
+                'actor' => $actorName,
                 'type' => $type
             ];
         });

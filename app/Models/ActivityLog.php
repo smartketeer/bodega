@@ -7,4 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class ActivityLog extends Model
 {
     protected $guarded = [];
+
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_user_id');
+    }
 }

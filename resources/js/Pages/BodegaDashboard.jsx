@@ -85,15 +85,21 @@ export default function BodegaDashboard({ capitalTiedUp, pendingRequests, deadSt
                         <ul className="divide-y divide-gray-100">
                             {activityStream.map(activity => (
                                 <li key={activity.id} className="p-6 hover:bg-gray-50/50 transition-colors flex gap-4">
-                                    <div className={`${getActivityBg(activity.type)} p-3 rounded-full h-fit`}>
+                                    <div className={`${getActivityBg(activity.type)} p-3 rounded-full h-fit mt-1`}>
                                         {getActivityIcon(activity.type)}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-1 gap-1 sm:gap-0">
-                                            <p className="font-bold text-gray-900">{activity.title}</p>
-                                            <span className="text-xs font-semibold text-gray-400">{activity.time}</span>
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-1 sm:gap-0">
+                                            <div>
+                                                <p className="font-bold text-gray-900 text-base">{activity.title}</p>
+                                                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">{activity.actor}</p>
+                                            </div>
+                                            <div className="flex flex-col sm:items-end mt-1 sm:mt-0">
+                                                <span className="text-[13px] font-bold text-gray-800">{activity.timestamp}</span>
+                                                <span className="text-[11px] font-medium text-gray-400">{activity.time}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 font-medium">{activity.description}</p>
+                                        <p className="text-sm text-gray-600 font-medium mt-1.5 leading-relaxed">{activity.description}</p>
                                     </div>
                                 </li>
                             ))}

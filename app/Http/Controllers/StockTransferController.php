@@ -141,7 +141,13 @@ class StockTransferController extends Controller
                 ];
             });
 
-        $categories = \App\Models\Category::all();
+        $categories = \App\Models\Category::all()->map(function ($cat) {
+            return [
+                'id' => $cat->bdg_id,
+                'name' => $cat->bdg_name,
+                'type' => $cat->bdg_description,
+            ];
+        });
 
         return Inertia::render('StockTransfers', [
             'branches' => $branches,

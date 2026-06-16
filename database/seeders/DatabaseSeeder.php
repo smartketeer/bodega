@@ -15,11 +15,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $categories = [
+            'Salon Products' => 'product',
+            'Beauty Products' => 'product',
+            'General Merchandise' => 'product',
+            'Other Products' => 'product',
+        ];
 
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        foreach ($categories as $name => $type) {
+            \App\Models\Category::firstOrCreate(
+                ['bdg_name' => $name],
+                ['bdg_description' => $type]
+            );
+        }
     }
 }

@@ -65,7 +65,7 @@ class RollbackSku extends Command
                 return [
                     $item['name'],
                     $item['original_sku'] ?? '(none)',
-                    $currentItem ? ($currentItem->sku ?? '(none)') : '(not found)',
+                    $currentItem ? ($currentItem->bdg_sku ?? '(none)') : '(not found)',
                 ];
             })->toArray()
         );
@@ -86,10 +86,10 @@ class RollbackSku extends Command
                 continue;
             }
 
-            $item->sku = $backupItem['original_sku'];
+            $item->bdg_sku = $backupItem['original_sku'];
             $item->save();
             $restored++;
-            $this->info("   ✓ {$item->name} → SKU: " . ($item->sku ?? '(none)'));
+            $this->info("   ✓ {$item->bdg_name} → SKU: " . ($item->bdg_sku ?? '(none)'));
         }
 
         $this->info("\n✅ Done! Restored {$restored} items' original SKUs!");

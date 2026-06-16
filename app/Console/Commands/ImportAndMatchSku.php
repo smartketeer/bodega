@@ -21,12 +21,41 @@ class ImportAndMatchSku extends Command
         $this->info('==========================================');
 
         try {
+            // Ask for Boutique-POS table name
+            $boutiqueTable = $this->ask('What is the name of the items table in Boutique-POS database?', 'items');
+            
+            // Ask for column names
+            $boutiqueIdCol = $this->ask('What is the name of the ID column in Boutique-POS items table?', 'id');
+            $boutiqueNameCol = $this->ask('What is the name of the product name column in Boutique-POS items table?', 'name');
+            $boutiqueSkuCol = $this->ask('What is the name of the SKU column in Boutique-POS items table?', 'sku');
+            $boutiquePriceCol = $this->ask('What is the name of the price column in Boutique-POS items table?', 'price');
+
             // Step 1: Get items from both databases
-            $this->info("\n📥 Fetching items from Boutique-POS database...");
-            $boutiqueItems = DB::connection('boutique_pos')->table('items')->get(['id', 'name', 'sku', 'price']);
+            $this->info("\n📥 Fetching items from Boutique-POS database (table: $boutiqueTable)...");
+            $boutiqueItems = DB::connection('boutique_pos')
+                ->table($boutiqueTable)
+                ->get([$boutiqueIdCol, $boutiqueNameCol, $boutiqueSkuCol, $boutiquePriceCol])
+                ->map(function ($item) use ($boutiqueIdCol, $boutiqueNameCol, $boutiqueSkuCol, $boutiquePriceCol) {
+                    return (object)[
+                        'id' => $item->$boutiqueIdCol,
+                        'name' => $item->$boutiqueNameCol,
+                        'sku' => $item->$boutiqueSkuCol,
+                        'price' => $item->$boutiquePriceCol
+                    ];
+                });
             $this->info("   Found {$boutiqueItems->count()} items in Boutique-POS");
 
-            $bodegaItems = Item::all(['id', 'name', 'sku', 'price'])->filter(fn($item) => empty($item->sku))->values();
+            $bodegaItems = Item::all(['bdg_id', 'bdg_name', 'bdg_sku', 'bdg_price'])
+                ->filter(fn($item) => empty($item->bdg_sku))
+                ->map(function ($item) {
+                    return (object)[
+                        'id' => $item->bdg_id,
+                        'name' => $item->bdg_name,
+                        'sku' => $item->bdg_sku,
+                        'price' => $item->bdg_price
+                    ];
+                })
+                ->values();
             $this->info("   Found " . Item::count() . " total items in Bodega, {$bodegaItems->count()} without SKU");
 
             // Step 2: Match items
@@ -110,11 +139,11 @@ class ImportAndMatchSku extends Command
             // Step 4: Create backup of current SKUs
             $this->info("\n💾 Creating backup of current SKUs...");
             $backupFile = storage_path('app/sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json');
-            $allBodegaItems = Item::all(['id', 'name', 'sku']);
+            $allBodegaItems = Item::all(['bdg_id', 'bdg_name', 'bdg_sku']);
             $backupData = $allBodegaItems->map(fn($item) => [
-                'id' => $item->id,
-                'name' => $item->name,
-                'original_sku' => $item->sku,
+                'id' => $item->bdg_id,
+                'name' => $item->bdg_name,
+                'original_sku' => $item->bdg_sku,
             ]);
             file_put_contents($backupFile, json_encode($backupData, JSON_PRETTY_PRINT));
             $this->info("   Backup saved to: {$backupFile}");
@@ -128,17 +157,17 @@ class ImportAndMatchSku extends Command
             foreach ($matches['perfect'] as $match) {
                 if ($match['boutique']->sku) {
                     $item = Item::find($match['bodega']->id);
-                    $originalSku = $item->sku;
-                    $item->sku = $match['boutique']->sku;
+                    $originalSku = $item->bdg_sku;
+                    $item->bdg_sku = $match['boutique']->sku;
                     $item->save();
                     $changes->push([
-                        'id' => $item->id,
-                        'name' => $item->name,
+                        'id' => $item->bdg_id,
+                        'name' => $item->bdg_name,
                         'original_sku' => $originalSku,
-                        'new_sku' => $item->sku,
+                        'new_sku' => $item->bdg_sku,
                     ]);
                     $updated++;
-                    $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
+                    $this->info("   ✓ {$item->bdg_name} → SKU: {$item->bdg_sku}");
                 }
             }
 
@@ -153,17 +182,17 @@ class ImportAndMatchSku extends Command
 
                 if ($confirm) {
                     $item = Item::find($match['bodega']->id);
-                    $originalSku = $item->sku;
-                    $item->sku = $match['boutique']->sku;
+                    $originalSku = $item->bdg_sku;
+                    $item->bdg_sku = $match['boutique']->sku;
                     $item->save();
                     $changes->push([
-                        'id' => $item->id,
-                        'name' => $item->name,
+                        'id' => $item->bdg_id,
+                        'name' => $item->bdg_name,
                         'original_sku' => $originalSku,
-                        'new_sku' => $item->sku,
+                        'new_sku' => $item->bdg_sku,
                     ]);
                     $updated++;
-                    $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
+                    $this->info("   ✓ {$item->bdg_name} → SKU: {$item->bdg_sku}");
                 }
             }
 
@@ -181,17 +210,17 @@ class ImportAndMatchSku extends Command
 
                 if ($confirm) {
                     $item = Item::find($bodegaItem->id);
-                    $originalSku = $item->sku;
-                    $item->sku = $bestPotential['item']->sku;
+                    $originalSku = $item->bdg_sku;
+                    $item->bdg_sku = $bestPotential['item']->sku;
                     $item->save();
                     $changes->push([
-                        'id' => $item->id,
-                        'name' => $item->name,
+                        'id' => $item->bdg_id,
+                        'name' => $item->bdg_name,
                         'original_sku' => $originalSku,
-                        'new_sku' => $item->sku,
+                        'new_sku' => $item->bdg_sku,
                     ]);
                     $updated++;
-                    $this->info("   ✓ {$item->name} → SKU: {$item->sku}");
+                    $this->info("   ✓ {$item->bdg_name} → SKU: {$item->bdg_sku}");
                 }
             }
 

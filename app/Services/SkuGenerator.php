@@ -10,13 +10,7 @@ class SkuGenerator
 {
     const MAX_ATTEMPTS = 100;
 
-    // Category name to code mapping
-    private static $categoryCodeMap = [
-        'Beauty & Personal Care' => 'BTY',
-        'School & Office Supplies' => 'SCH',
-        'Apparel & Fashion' => 'APP',
-        'Footwear' => 'FTW',
-    ];
+    // Removed categoryCodeMap to prevent dummy data generation
 
     public static function generate(Item $item): string
     {
@@ -58,13 +52,9 @@ class SkuGenerator
         $categoryCode = 'GEN';
         if ($category) {
             $categoryName = trim($category->bdg_name);
-            if (isset(self::$categoryCodeMap[$categoryName])) {
-                $categoryCode = self::$categoryCodeMap[$categoryName];
-            } else {
-                // Fallback: generate 3-letter code from category name
-                $categoryCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $categoryName), 0, 3));
-                $categoryCode = str_pad($categoryCode, 3, 'X', STR_PAD_RIGHT);
-            }
+            // Generate 3-letter code from live category name instead of mock mapping
+            $categoryCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $categoryName), 0, 3));
+            $categoryCode = str_pad($categoryCode, 3, 'X', STR_PAD_RIGHT);
         }
 
         // Generate item parts from name

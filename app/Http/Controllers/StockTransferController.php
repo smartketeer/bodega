@@ -453,6 +453,28 @@ class StockTransferController extends Controller
             ]);
         }
 
+        try {
+            // Push to boutique_pos
+            $categoryName = \App\Models\Category::find($validated['category_id'])->bdg_name ?? '';
+            $posCategoryId = \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('categories')
+                ->where('name', $categoryName)->value('id');
+
+            if ($posCategoryId) {
+                \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('items')->insertOrIgnore([
+                    'name' => $validated['name'],
+                    'sku' => $item->bdg_sku,
+                    'category_id' => $posCategoryId,
+                    'cost' => $validated['capital_price'],
+                    'price' => $validated['selling_price'],
+                    'stock_qty' => 0, // Branch stock is 0 initially when added in Bodega
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Ignore if POS is unreachable
+        }
+
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'item_added',
@@ -474,6 +496,18 @@ class StockTransferController extends Controller
         $category->bdg_description = $validated['type'];
         $category->save();
 
+        try {
+            // Sync category to POS
+            \Illuminate\Support\Facades\DB::connection('boutique_pos')->table('categories')->insertOrIgnore([
+                'name' => $validated['name'],
+                'description' => $validated['type'],
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Exception $e) {
+            // Handle or ignore if POS is unreachable
+        }
+
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'category_added',
@@ -481,6 +515,42 @@ class StockTransferController extends Controller
         ]);
 
         return redirect()->back();
+    }
+
+    public function checkDuplicate(Request $request)
+    {
+        $name = trim($request->input('name'));
+        if (empty($name)) {
+            return response()->json(['duplicates' => []]);
+        }
+
+        // Tokenize the name
+        $nameTokens = explode(' ', strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $name)));
+        
+        $items = \App\Models\Item::select('bdg_id as id', 'bdg_name as name', 'bdg_stock_qty as stock_qty', 'bdg_category_id as category_id', 'bdg_price as price', 'bdg_cost as cost')->get();
+        $duplicates = [];
+
+        foreach ($items as $item) {
+            $itemNameTokens = explode(' ', strtolower(preg_replace('/[^a-zA-Z0-9\s]/', '', $item->name)));
+            $commonTokens = array_intersect($nameTokens, $itemNameTokens);
+            $similarity = 0;
+            
+            if (count($nameTokens) > 0) {
+                $similarity = (count($commonTokens) / count($nameTokens)) * 100;
+            }
+
+            if ($similarity >= 60) {
+                $item->similarity = round($similarity);
+                $duplicates[] = $item;
+            }
+        }
+
+        // Sort by similarity descending
+        usort($duplicates, function($a, $b) {
+            return $b->similarity <=> $a->similarity;
+        });
+
+        return response()->json(['duplicates' => $duplicates]);
     }
 
     public function rejectRequisition(Request $request, $id)

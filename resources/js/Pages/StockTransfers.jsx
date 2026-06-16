@@ -3,8 +3,9 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import { 
     Send, FileText, History, CheckCircle2, Clock, Search, Layers, X, Package, 
-    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus, Trash2 
+    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus, Trash2, AlertCircle
 } from 'lucide-react';
+import axios from 'axios';
 
 export default function StockTransfers({ branches, availableItems, branchRequisitions, transferHistory, stockInHistory, stockOutHistory, categories }) {
     const [activeTab, setActiveTab] = useState('adjust'); // 'stock-in', 'stock-out', 'adjust', 'transfer'
@@ -35,12 +36,35 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [addItemForm, setAddItemForm] = useState({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
     const [addCategoryForm, setAddCategoryForm] = useState({ name: '', type: 'product' });
 
-    const handleAddItem = (e) => {
+    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+    const [duplicateItems, setDuplicateItems] = useState([]);
+    const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
+    const checkDuplicateAndSave = async (e) => {
         e.preventDefault();
+        setIsCheckingDuplicate(true);
+        try {
+            const response = await axios.post('/items/check-duplicate', { name: addItemForm.name });
+            const duplicates = response.data.duplicates || [];
+            if (duplicates.length > 0) {
+                setDuplicateItems(duplicates);
+                setIsDuplicateModalOpen(true);
+                setIsCheckingDuplicate(false);
+                return;
+            }
+        } catch (error) {
+            console.error('Failed to check for duplicates', error);
+        }
+        setIsCheckingDuplicate(false);
+        proceedSaveNewItem();
+    };
+
+    const proceedSaveNewItem = () => {
         router.post('/items', addItemForm, {
             preserveScroll: true,
             onSuccess: () => {
                 setIsAddItemModalOpen(false);
+                setIsDuplicateModalOpen(false);
                 setAddItemForm({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
                 router.reload();
             }
@@ -96,13 +120,6 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     };
 
     // ── SKU Automation Logic ──
-    const categoryCodeMap = {
-        'Beauty & Personal Care': 'BTY',
-        'School & Office Supplies': 'SCH',
-        'Apparel & Fashion': 'APP',
-        'Footwear': 'FTW',
-    };
-
     const extractNameParts = (name) => {
         const cleanName = name.replace(/[^A-Za-z0-9\s]/g, '');
         const words = cleanName.trim().split(/\s+/).filter(Boolean);
@@ -115,10 +132,6 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
         if (!category) return 'GEN';
         
         const categoryName = category.name.trim();
-        if (categoryCodeMap[categoryName]) {
-            return categoryCodeMap[categoryName];
-        }
-        
         const cleanCatName = categoryName.replace(/[^A-Za-z0-9]/g, '');
         const code = cleanCatName.substring(0, 3).toUpperCase().padEnd(3, 'X');
         return code;
@@ -998,8 +1011,54 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             </div>
                         </div>
                         <div className="p-6 pt-2">
-                            <button onClick={handleAddItem} className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide">
-                                SAVE ITEM
+                            <button onClick={checkDuplicateAndSave} disabled={isCheckingDuplicate} className="w-full bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide disabled:opacity-50">
+                                {isCheckingDuplicate ? 'CHECKING...' : 'SAVE ITEM'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Duplicate Item Modal ── */}
+            {isDuplicateModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                        <div className="bg-orange-50 p-6 pb-5 border-b border-orange-100 flex flex-col items-center justify-center text-center">
+                            <div className="bg-orange-100 p-3 rounded-full mb-3 text-orange-600">
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">Similar Item Detected</h3>
+                            <p className="text-sm text-gray-600">We found existing items with similar names in the Bodega inventory. Please review them before proceeding.</p>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-60 overflow-y-auto">
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Existing Similar Items</label>
+                            {duplicateItems.map((item, idx) => (
+                                <div key={idx} className="flex flex-col p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors cursor-pointer" onClick={() => {
+                                    setIsDuplicateModalOpen(false);
+                                    setIsAddItemModalOpen(false);
+                                    setActiveTab('adjust');
+                                    setSearchQuery(item.name);
+                                }}>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-bold text-gray-900">{item.name}</span>
+                                        <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">{item.similarity}% Match</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">Capital: ₱{item.cost} • Selling: ₱{item.price} • Stock: {item.stock_qty}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-6 pt-0 space-y-3 bg-gray-50 border-t border-gray-100">
+                            <button 
+                                onClick={proceedSaveNewItem} 
+                                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide mt-6"
+                            >
+                                PROCEED AS NEW ITEM
+                            </button>
+                            <button 
+                                onClick={() => setIsDuplicateModalOpen(false)} 
+                                className="w-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm tracking-wide"
+                            >
+                                CANCEL
                             </button>
                         </div>
                     </div>

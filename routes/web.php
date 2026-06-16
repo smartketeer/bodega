@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/stock-out', [\App\Http\Controllers\StockTransferController::class, 'stockOut']);
     Route::post('/stock-adjust', [\App\Http\Controllers\StockTransferController::class, 'adjust']);
     Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
+    Route::post('/items/check-duplicate', [\App\Http\Controllers\StockTransferController::class, 'checkDuplicate']);
     Route::post('/items/bulk-delete', [\App\Http\Controllers\StockTransferController::class, 'bulkDelete']);
     Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
 

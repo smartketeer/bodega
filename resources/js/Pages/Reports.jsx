@@ -89,7 +89,7 @@ export default function Reports({ topByStock, topByCapital, branchDistribution, 
                                                 <span className="text-sm font-black text-gray-300 w-4">{index + 1}</span>
                                                 <div>
                                                     <div className="font-bold text-gray-900 text-sm">{item.name}</div>
-                                                    <div className="text-[11px] font-bold text-gray-500 font-mono mt-0.5">{item.sku}</div>
+
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right font-black text-gray-900">
@@ -127,7 +127,7 @@ export default function Reports({ topByStock, topByCapital, branchDistribution, 
                                                 <span className="text-sm font-black text-gray-300 w-4">{index + 1}</span>
                                                 <div>
                                                     <div className="font-bold text-gray-900 text-sm">{item.name}</div>
-                                                    <div className="text-[11px] font-bold text-gray-500 font-mono mt-0.5">{item.sku}</div>
+
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right font-bold text-gray-600">

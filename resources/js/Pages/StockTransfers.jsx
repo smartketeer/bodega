@@ -164,8 +164,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const addDropdownRef = useRef(null);
 
     const filteredItems = availableItems.filter(item => 
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (item.sku && item.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -246,12 +245,11 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
 
     const handleApproveRequest = (req) => {
         const matchedItem = availableItems.find(i => 
-            (i.sku && req.sku && i.sku.toLowerCase() === req.sku.toLowerCase()) || 
             i.name.toLowerCase() === req.item.toLowerCase()
         );
 
         if (!matchedItem) {
-            alert(`Item '${req.item}' not found in Bodega inventory! Please check SKU or name.`);
+            alert(`Item '${req.item}' not found in Bodega inventory! Please check the name.`);
             return;
         }
 
@@ -426,7 +424,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                     <input 
                                                         type="text"
                                                         className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
-                                                        placeholder="Search item by name or SKU..."
+                                                        placeholder="Search item by name..."
                                                         value={searchQuery}
                                                         onChange={e => { setSearchQuery(e.target.value); setIsDropdownOpen(true); }}
                                                         onFocus={() => setIsDropdownOpen(true)}
@@ -444,7 +442,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                             >
                                                                 <div>
                                                                     <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
-                                                                    <div className="text-xs font-mono text-gray-500 mt-0.5">{item.sku}</div>
+
                                                                 </div>
                                                                 <div className="text-xs font-bold text-gray-500 uppercase tracking-wide bg-gray-100 px-2 py-1 rounded-md">
                                                                     {item.stock} IN STOCK
@@ -560,7 +558,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                 <input 
                                                     type="text"
                                                     className="w-full pl-9 rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors shadow-sm text-sm"
-                                                    placeholder="Search by name or SKU..."
+                                                    placeholder="Search by name..."
                                                     value={searchQuery}
                                                     onChange={e => setSearchQuery(e.target.value)}
                                                 />
@@ -630,7 +628,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                     </th>
                                                 )}
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Product Name</th>
-                                                <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-32">SKU</th>
+
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-40">Capital Price</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider w-40">Selling Price</th>
                                                 <th className="px-5 py-4 text-xs font-bold text-gray-600 uppercase tracking-wider text-right w-48">Actions</th>
@@ -700,7 +698,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                             </td>
                                                         )}
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">{item.name}</td>
-                                                        <td className="px-5 py-4 text-sm font-medium text-gray-500">{item.sku || '—'}</td>
+
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">₱{item.capitalPrice}</td>
                                                         <td className="px-5 py-4 font-bold text-gray-900 text-sm">₱{item.sellingPrice}</td>
                                                         <td className="px-5 py-4 text-right">
@@ -759,7 +757,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                             <input 
                                                 type="text"
                                                 className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm px-4 py-2.5"
-                                                placeholder="Search by name or SKU..."
+                                                placeholder="Search by name..."
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
                                             />
@@ -970,17 +968,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">ITEM NAME</label>
                                 <input type="text" className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 transition-colors" value={addItemForm.name} onChange={e => setAddItemForm({...addItemForm, name: e.target.value})} />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">SKU</label>
-                                <input 
-                                    type="text" 
-                                    readOnly
-                                    placeholder="Will be auto-generated"
-                                    className="w-full rounded-xl border-gray-200 bg-gray-50 focus:border-gray-200 focus:ring-0 shadow-sm text-sm px-4 py-2.5 text-gray-500 cursor-not-allowed transition-colors" 
-                                    value={addItemForm.sku} 
-                                />
-                                <p className="text-[10px] text-gray-500 mt-1">Auto-generated by the system. Cannot be edited manually.</p>
-                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider mb-2">CATEGORY</label>
                                 <select className="w-full rounded-xl border-gray-200 bg-white focus:border-gray-400 focus:ring-0 shadow-sm text-sm px-4 py-2.5 font-medium transition-colors" value={addItemForm.category_id} onChange={e => setAddItemForm({...addItemForm, category_id: e.target.value})}>

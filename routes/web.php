@@ -37,19 +37,3 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
-Route::get('/debug-session', function () {
-    $sessionId = session()->getId();
-    $sessionPayload = \Illuminate\Support\Facades\DB::table('sessions')->where('id', $sessionId)->first();
-    return response()->json([
-        'expected_cookie_name' => config('session.cookie'),
-        'received_cookie' => request()->cookie(config('session.cookie')) ? 'YES' : 'NO',
-        'auth_check' => auth()->check() ? 'YES' : 'NO',
-        'auth_id' => auth()->id(),
-        'session_id' => $sessionId,
-        'session_exists_in_db' => $sessionPayload ? 'YES' : 'NO',
-        'session_payload' => $sessionPayload ? json_decode(base64_decode($sessionPayload->payload)) : null,
-        'database_connection' => config('database.connections.mysql.database'),
-        'session_driver' => config('session.driver')
-    ]);
-});

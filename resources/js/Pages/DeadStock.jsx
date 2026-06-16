@@ -12,8 +12,7 @@ export default function DeadStock({ deadStockItems, totalItemsAtRisk, capitalLoc
 
     const filteredItems = deadStockItems.filter(item => {
         const searchLower = searchQuery.toLowerCase();
-        const matchesSearch = item.name.toLowerCase().includes(searchLower) || 
-                              item.sku.toLowerCase().includes(searchLower);
+        const matchesSearch = item.name.toLowerCase().includes(searchLower);
         const matchesStagnation = Math.floor(item.daysStagnant) >= parseInt(stagnantFilter);
         return matchesSearch && matchesStagnation;
     });
@@ -136,7 +135,7 @@ export default function DeadStock({ deadStockItems, totalItemsAtRisk, capitalLoc
                         <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-100">
-                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Item Details & SKU</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Item Details</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Category</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">Days Stagnant</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center">Qty on Hand</th>
@@ -150,7 +149,7 @@ export default function DeadStock({ deadStockItems, totalItemsAtRisk, capitalLoc
                                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-gray-900 text-sm">{item.name}</div>
-                                            <div className="text-[11px] font-bold tracking-wider text-gray-500 font-mono mt-1">{item.sku}</div>
+
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
@@ -252,7 +251,7 @@ export default function DeadStock({ deadStockItems, totalItemsAtRisk, capitalLoc
                         <div className="p-6">
                             <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
                                 <p className="text-sm font-bold text-gray-900">{activeItem.name}</p>
-                                <p className="text-xs text-gray-500 font-mono mt-1">{activeItem.sku}</p>
+
                                 <div className="mt-3 flex items-center gap-4">
                                     <span className="text-xs font-semibold text-gray-500 uppercase">Available: <span className="font-bold text-gray-900">{activeItem.qty}</span></span>
                                     <span className="text-xs font-semibold text-gray-500 uppercase">Locked: <span className="font-bold text-gray-900">{formatCurrency(activeItem.capitalLocked)}</span></span>

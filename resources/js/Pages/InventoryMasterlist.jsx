@@ -34,8 +34,7 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
             result = result.filter(item => 
-                (item.name && item.name.toLowerCase().includes(lowerQuery)) || 
-                (item.sku && item.sku.toLowerCase().includes(lowerQuery))
+                (item.name && item.name.toLowerCase().includes(lowerQuery))
             );
         }
 
@@ -259,8 +258,7 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
 
                     {/* Table Header */}
                     <div className="grid grid-cols-12 gap-4 pb-4 border-b border-gray-200 text-[11px] font-bold text-gray-800 uppercase tracking-wider px-2">
-                        <div className="col-span-5 md:col-span-3">NAME</div>
-                        <div className="hidden md:block col-span-2">SKU</div>
+                        <div className="col-span-5 md:col-span-5">NAME</div>
                         <div className="col-span-3 md:col-span-3">CATEGORY</div>
                         <div className="col-span-2 md:col-span-2">PRICE</div>
                         <div className="col-span-2 md:col-span-1">STOCK</div>
@@ -273,7 +271,7 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
                             <div className="divide-y divide-gray-100">
                                 {paginatedItems.map(item => (
                                     <div key={item.id} className="grid grid-cols-12 gap-4 py-3 items-center px-2 hover:bg-gray-50/50 transition-colors group">
-                                        <div className="col-span-5 md:col-span-3 flex items-center gap-4 min-w-0">
+                                        <div className="col-span-5 md:col-span-5 flex items-center gap-4 min-w-0">
                                             <div className="relative">
                                                 <button 
                                                     onClick={() => openImageModal(item)}
@@ -303,11 +301,7 @@ export default function InventoryMasterlist({ itemsProp, categories }) {
                                                 <h4 className="font-bold text-gray-900 text-[15px] leading-tight truncate">{item.name}</h4>
                                             </div>
                                         </div>
-                                        <div className="hidden md:block col-span-2 flex items-center min-w-0">
-                                            <span className="text-gray-700 text-[12px] font-bold truncate">
-                                                {item.sku || 'N/A'}
-                                            </span>
-                                        </div>
+
                                         <div className="col-span-3 md:col-span-3 flex items-center min-w-0">
                                             <span className="border border-gray-200 text-gray-700 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white truncate">
                                                 {item.category_name}

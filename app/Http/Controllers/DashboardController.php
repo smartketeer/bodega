@@ -72,6 +72,30 @@ class DashboardController extends Controller
                 $description = "Logged into the Bodega system.";
             } elseif ($log->event_type === 'Auth Logout' || str_contains($description, 'logged out')) {
                 $description = "Logged out of the Bodega system.";
+            } elseif ($log->event_type === 'requisition_rejected') {
+                if (preg_match('/Rejected branch requisition #(\d+)/i', $description, $matches)) {
+                    $id = $matches[1];
+                    $requisition = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                        ->table('branch_requisitions')
+                        ->leftJoin('branches', 'branch_requisitions.branch_id', '=', 'branches.id')
+                        ->leftJoin('users', 'branch_requisitions.user_id', '=', 'users.id')
+                        ->select('branch_requisitions.*', 'branches.name as branch_name', 'users.name as cashier_name')
+                        ->where('branch_requisitions.id', $id)
+                        ->first();
+                    
+                    if ($requisition) {
+                        $itemName = $requisition->item_name ?? 'Unknown Item';
+                        $branchName = $requisition->branch_name ?? 'Unknown Branch';
+                        $cashierName = $requisition->cashier_name ?? 'Unknown Cashier';
+                        $description = "rejected {$requisition->quantity}x {$itemName} from {$branchName} requested by {$cashierName}";
+                    } else {
+                        $description = lcfirst($description);
+                    }
+                } else {
+                    $description = lcfirst($description);
+                }
+                // Prepend actor name to make it "Admin User rejected..."
+                $description = "{$actorName} {$description}";
             }
             
             return [

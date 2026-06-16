@@ -479,6 +479,18 @@ class StockTransferController extends Controller
 
     public function rejectRequisition(Request $request, $id)
     {
+        $requisition = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('branch_requisitions')
+            ->leftJoin('branches', 'branch_requisitions.branch_id', '=', 'branches.id')
+            ->leftJoin('users', 'branch_requisitions.user_id', '=', 'users.id')
+            ->select(
+                'branch_requisitions.*',
+                'branches.name as branch_name',
+                'users.name as cashier_name'
+            )
+            ->where('branch_requisitions.id', $id)
+            ->first();
+
         \Illuminate\Support\Facades\DB::connection('boutique_pos')
             ->table('branch_requisitions')
             ->where('id', $id)
@@ -487,10 +499,19 @@ class StockTransferController extends Controller
                 'is_notified' => false
             ]);
 
+        if ($requisition) {
+            $itemName = $requisition->item_name ?? 'Unknown Item';
+            $branchName = $requisition->branch_name ?? 'Unknown Branch';
+            $cashierName = $requisition->cashier_name ?? 'Unknown Cashier';
+            $description = "Rejected {$requisition->quantity}x {$itemName} from {$branchName} requested by {$cashierName}";
+        } else {
+            $description = "Rejected branch requisition #{$id}";
+        }
+
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'requisition_rejected',
-            'description' => "Rejected branch requisition #{$id}",
+            'description' => $description,
         ]);
 
         return redirect()->back()->with('success', 'Requisition rejected successfully.');

@@ -66,37 +66,7 @@ class ImportAndMatchSku extends Command
             // Sort matches by score descending
             $matches = $matches->sortByDesc('score')->values();
 
-            // Show matches
-            $this->info("\n📊 Potential Matches (sorted by similarity):");
-            $this->table(
-                ['#', 'Bodega Item', 'Best Match', 'Similarity', 'SKU'],
-                $matches->map(function ($match, $index) {
-                    return [
-                        $index + 1,
-                        $match['bodega']->name,
-                        $match['boutique'] ? $match['boutique']->name : '(no match)',
-                        $match['score'] . '%',
-                        $match['boutique'] ? ($match['boutique']->sku ?? '(no sku)') : '-'
-                    ];
-                })->toArray()
-            );
-
-            // Ask which matches to apply
-            $applyAll = $this->confirm("\nDo you want to apply all matches with SKUs? (You can also select specific ones)", false);
-            $selectedIndices = [];
-
-            if (!$applyAll) {
-                $selected = $this->ask("\nEnter the numbers of the matches you want to apply (comma-separated, e.g., 1,3,5), or 'all'");
-                if (strtolower($selected) === 'all') {
-                    $applyAll = true;
-                } else {
-                    $selectedIndices = array_map('trim', explode(',', $selected));
-                    $selectedIndices = array_filter($selectedIndices, 'is_numeric');
-                    $selectedIndices = array_map('intval', $selectedIndices);
-                }
-            }
-
-            // Step 3: Create backup
+            // Step 3: Create backup BEFORE making any changes
             $this->info("\n💾 Creating backup of current SKUs...");
             $backupFileName = 'sku_backup_' . now()->format('Y_m_d_H_i_s') . '.json';
             $allBodegaItems = Item::all(['bdg_id', 'bdg_name', 'bdg_sku']);
@@ -108,25 +78,34 @@ class ImportAndMatchSku extends Command
             Storage::disk('local')->put($backupFileName, json_encode($backupData, JSON_PRETTY_PRINT));
             $this->info("   Backup saved to: {$backupFileName}");
 
-            // Step 4: Apply selected matches
-            $this->info("\n💾 Applying SKUs...");
+            // Step 4: Go through each match and ask yes/no
+            $this->info("\n� Now reviewing matches one by one...");
+            $this->info("   For each item, review the best match and confirm if they are the same product.\n");
             $updated = 0;
 
             foreach ($matches as $index => $match) {
-                if (!$match['boutique'] || !$match['boutique']->sku) {
+                $this->info("--- Item " . ($index + 1) . " of " . count($matches) . " ---");
+                
+                if (!$match['boutique']) {
+                    $this->info("⚠️  Bodega Item: {$match['bodega']->name}");
+                    $this->info("   No potential match found in Boutique-POS\n");
                     continue;
                 }
 
-                $shouldApply = $applyAll || in_array($index + 1, $selectedIndices);
-                if (!$shouldApply) {
-                    continue;
-                }
+                $this->info("📦 Bodega Item: {$match['bodega']->name}");
+                $this->info("🔍 Best Match:   {$match['boutique']->name}");
+                $this->info("📊 Similarity:   {$match['score']}%");
+                $this->info("🏷️ SKU:          {$match['boutique']->sku}");
 
-                $item = Item::find($match['bodega']->id);
-                $item->bdg_sku = $match['boutique']->sku;
-                $item->save();
-                $updated++;
-                $this->info("   ✓ {$item->bdg_name} → SKU: {$item->bdg_sku} ({$match['score']}% match)");
+                if ($this->confirm("\nAre these the same product? Do you want to apply this SKU?", true)) {
+                    $item = Item::find($match['bodega']->id);
+                    $item->bdg_sku = $match['boutique']->sku;
+                    $item->save();
+                    $updated++;
+                    $this->info("✅ Applied SKU: {$item->bdg_sku}\n");
+                } else {
+                    $this->info("❌ Skipped this match\n");
+                }
             }
 
             $this->info("\n✅ Done! Updated {$updated} items with SKUs!");

@@ -935,9 +935,13 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            {record.status === 'Completed' ? (
+                                            {record.status === 'Completed' || record.status === 'Approved' ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-green-50 text-green-700 border border-green-200">
                                                     <CheckCircle2 size={12} /> {record.status}
+                                                </span>
+                                            ) : record.status === 'Rejected' ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-red-50 text-red-700 border border-red-200">
+                                                    <X size={12} /> {record.status}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">

@@ -46,11 +46,12 @@ class StockTransferController extends Controller
                 ];
             });
 
-        $transferHistory = StockTransfer::with(['fromBranch', 'toBranch', 'requester', 'items.item'])
+        $transfersQuery = StockTransfer::with(['fromBranch', 'toBranch', 'requester', 'items.item'])
             ->orderBy('created_at', 'desc')
             ->take(20)
-            ->get()
-            ->map(function ($transfer) {
+            ->get();
+            
+        $transfers = $transfersQuery->map(function ($transfer) {
                 $firstItem = $transfer->items->first();
                 return [
                     'id' => $transfer->bdg_reference_number,
@@ -61,9 +62,46 @@ class StockTransferController extends Controller
                     'qty' => $firstItem ? $firstItem->bdg_quantity : 0,
                     'from' => $transfer->fromBranch ? $transfer->fromBranch->name : 'Main Bodega',
                     'to' => $transfer->toBranch ? $transfer->toBranch->name : 'Main Bodega',
-                    'status' => ucfirst($transfer->bdg_status),
+                    'status' => 'Approved',
+                    'sort_date' => $transfer->created_at,
                 ];
             });
+
+        $rejectedRequisitions = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('branch_requisitions')
+            ->leftJoin('branches', 'branch_requisitions.branch_id', '=', 'branches.id')
+            ->leftJoin('users', 'branch_requisitions.user_id', '=', 'users.id')
+            ->select(
+                'branch_requisitions.*',
+                'branches.name as branch_name',
+                'users.name as cashier_name'
+            )
+            ->where('branch_requisitions.status', 'rejected')
+            ->orderBy('branch_requisitions.updated_at', 'desc')
+            ->take(20)
+            ->get()
+            ->map(function ($req) {
+                $updatedAt = \Carbon\Carbon::parse($req->updated_at);
+                return [
+                    'id' => 'REQ-REJ-' . $req->id,
+                    'date' => $updatedAt->format('M j, Y'),
+                    'time' => $updatedAt->format('h:i A'),
+                    'cashier' => $req->cashier_name ?? 'Unknown',
+                    'item' => $req->item_name,
+                    'qty' => $req->quantity,
+                    'from' => 'Main Bodega',
+                    'to' => $req->branch_name ?? 'Unknown Branch',
+                    'status' => 'Rejected',
+                    'sort_date' => $updatedAt,
+                ];
+            });
+
+        $transferHistory = $transfers->concat($rejectedRequisitions)
+            ->sortByDesc(function ($item) {
+                return $item['sort_date']->timestamp;
+            })
+            ->take(20)
+            ->values();
 
         $stockInHistory = \Illuminate\Support\Facades\DB::table('bodega_stock_logs')
             ->join('bodega_items', 'bodega_stock_logs.bdg_item_id', '=', 'bodega_items.bdg_id')

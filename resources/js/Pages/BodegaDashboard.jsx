@@ -5,21 +5,12 @@ import { DollarSign, Inbox, AlertCircle, Activity, ArrowRightLeft, CheckCircle, 
 export default function BodegaDashboard({ capitalTiedUp, pendingRequests, deadStockCount, activityStreamProp }) {
     const activityStream = activityStreamProp || [];
 
-    const getActivityIcon = (type) => {
+    const getActivityStyle = (type) => {
         switch(type) {
-            case 'transfer': return <ArrowRightLeft size={18} className="text-blue-600" />;
-            case 'restock': return <CheckCircle size={18} className="text-green-600" />;
-            case 'alert': return <Bell size={18} className="text-orange-600" />;
-            default: return <Activity size={18} className="text-gray-600" />;
-        }
-    };
-
-    const getActivityBg = (type) => {
-        switch(type) {
-            case 'transfer': return 'bg-blue-100';
-            case 'restock': return 'bg-green-100';
-            case 'alert': return 'bg-orange-100';
-            default: return 'bg-gray-100';
+            case 'transfer': return { borderBg: 'border-blue-200 bg-blue-50/30', dot: 'bg-blue-500', tag: 'text-blue-600' };
+            case 'restock': return { borderBg: 'border-green-200 bg-green-50/30', dot: 'bg-green-500', tag: 'text-green-600' };
+            case 'alert': return { borderBg: 'border-orange-200 bg-orange-50/30', dot: 'bg-orange-500', tag: 'text-orange-600' };
+            default: return { borderBg: 'border-gray-200 bg-gray-50/30', dot: 'bg-gray-500', tag: 'text-gray-600' };
         }
     };
 
@@ -81,29 +72,30 @@ export default function BodegaDashboard({ capitalTiedUp, pendingRequests, deadSt
                         </div>
                         <h3 className="text-lg font-bold text-gray-900">Recent Activity Stream</h3>
                     </div>
-                    <div className="p-0">
-                        <ul className="divide-y divide-gray-100">
-                            {activityStream.map(activity => (
-                                <li key={activity.id} className="p-6 hover:bg-gray-50/50 transition-colors flex gap-4">
-                                    <div className={`${getActivityBg(activity.type)} p-3 rounded-full h-fit mt-1`}>
-                                        {getActivityIcon(activity.type)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-1 sm:gap-0">
-                                            <div>
-                                                <p className="font-bold text-gray-900 text-base">{activity.title}</p>
-                                                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mt-0.5">{activity.actor}</p>
+                    <div className="p-6">
+                        <div className="flex flex-col">
+                            {activityStream.map(activity => {
+                                const styles = getActivityStyle(activity.type);
+                                return (
+                                    <div key={activity.id} className={`border ${styles.borderBg} rounded-xl p-4 mb-3 transition-colors hover:bg-white`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${styles.dot}`}></div>
+                                                <span className="font-bold text-gray-900 text-[15px]">{activity.actor}</span>
+                                                <span className={`bg-gray-100 text-[10px] px-2.5 py-0.5 rounded-full font-bold ${styles.tag}`}>
+                                                    {activity.title}
+                                                </span>
                                             </div>
-                                            <div className="flex flex-col sm:items-end mt-1 sm:mt-0">
-                                                <span className="text-[13px] font-bold text-gray-800">{activity.timestamp}</span>
-                                                <span className="text-[11px] font-medium text-gray-400">{activity.time}</span>
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-xs font-semibold text-gray-800">{activity.timestamp}</span>
+                                                <span className="text-[10px] font-medium text-gray-400">{activity.time}</span>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-gray-600 font-medium mt-1.5 leading-relaxed">{activity.description}</p>
+                                        <p className="text-[13px] text-gray-800 font-medium ml-4 leading-relaxed">{activity.description}</p>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>

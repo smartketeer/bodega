@@ -29,17 +29,28 @@ class DashboardController extends Controller
             ->where('updated_at', '<', $thirtyDaysAgo)
             ->count();
 
-        // Exclude POS-specific cashier activities
-        $excludedEvents = [
-            'Sale Completed', 'sale_completed', 
-            'transaction_completed',
+        // Only include Bodega-specific events, and Admin Auth logs. Exclude any POS or mock data.
+        $bodegaEvents = [
+            'stock_transfer',
             'stock_restock',
-            'void_transaction'
+            'stock_out',
+            'item_adjusted',
+            'item_added',
+            'category_added',
+            'requisition_rejected',
+            'items_deleted'
         ];
 
-        // ActivityLog uses POS activity_logs table for now, since Bodega shares the POS database natively.
         $logs = ActivityLog::with('actor')
-            ->whereNotIn('event_type', $excludedEvents)
+            ->where(function ($query) use ($bodegaEvents) {
+                $query->whereIn('event_type', $bodegaEvents)
+                      ->orWhere(function ($q) {
+                          $q->whereIn('event_type', ['Auth Login', 'Auth Logout', 'login', 'logout'])
+                            ->whereHas('actor', function ($actorQuery) {
+                                $actorQuery->where('role', 'admin');
+                            });
+                      });
+            })
             ->orderBy('created_at', 'desc')
             ->take(8)
             ->get();
@@ -50,21 +61,17 @@ class DashboardController extends Controller
 
             if (str_contains($eventTypeLower, 'transfer')) $type = 'transfer';
             elseif (str_contains($eventTypeLower, 'restock') || str_contains($eventTypeLower, 'added') || str_contains($eventTypeLower, 'created')) $type = 'restock';
-            elseif (str_contains($eventTypeLower, 'alert') || str_contains($eventTypeLower, 'revoked') || str_contains($eventTypeLower, 'rejected')) $type = 'alert';
+            elseif (str_contains($eventTypeLower, 'alert') || str_contains($eventTypeLower, 'revoked') || str_contains($eventTypeLower, 'rejected') || str_contains($eventTypeLower, 'deleted')) $type = 'alert';
             
             $actorName = $log->actor ? $log->actor->name : 'Admin User';
             $timestamp = $log->created_at->format('M d, Y | h:i A');
             $timeAgo = $log->created_at->isFuture() ? 'Just now' : $log->created_at->diffForHumans();
             
-            // Refine generic descriptions to be more specific based on live events
             $description = $log->description;
             if ($log->event_type === 'Auth Login' || str_contains($description, 'logged into')) {
-                $description = "Logged into the system.";
+                $description = "Logged into the Bodega system.";
             } elseif ($log->event_type === 'Auth Logout' || str_contains($description, 'logged out')) {
-                $description = "Logged out of the system.";
-            } elseif (str_contains($description, 'inventory item via approved inventory management access')) {
-                // Remove generic part if it's too long, or leave it as is
-                $description = "Modified inventory via management access.";
+                $description = "Logged out of the Bodega system.";
             }
             
             return [

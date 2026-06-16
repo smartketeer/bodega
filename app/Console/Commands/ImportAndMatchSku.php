@@ -30,7 +30,6 @@ class ImportAndMatchSku extends Command
             $this->info("   Found {$boutiqueItems->count()} items in Boutique-POS");
 
             $bodegaItems = Item::all(['bdg_id', 'bdg_name', 'bdg_sku', 'bdg_price'])
-                ->filter(fn($item) => empty($item->bdg_sku))
                 ->map(fn($item) => (object)[
                     'id' => $item->bdg_id,
                     'name' => $item->bdg_name,
@@ -38,7 +37,7 @@ class ImportAndMatchSku extends Command
                     'price' => $item->bdg_price
                 ])
                 ->values();
-            $this->info("   Found " . Item::count() . " total items in Bodega, {$bodegaItems->count()} without SKU");
+            $this->info("   Found " . count($bodegaItems) . " items in Bodega");
 
             // Step 2: Find best match for each Bodega item
             $this->info("\n🔍 Finding best matches for each item...");
@@ -79,7 +78,7 @@ class ImportAndMatchSku extends Command
             $this->info("   Backup saved to: {$backupFileName}");
 
             // Step 4: Go through each match and ask yes/no
-            $this->info("\n� Now reviewing matches one by one...");
+            $this->info("\n💬 Now reviewing matches one by one...");
             $this->info("   For each item, review the best match and confirm if they are the same product.\n");
             $updated = 0;
 
@@ -87,22 +86,24 @@ class ImportAndMatchSku extends Command
                 $this->info("--- Item " . ($index + 1) . " of " . count($matches) . " ---");
                 
                 if (!$match['boutique']) {
-                    $this->info("⚠️  Bodega Item: {$match['bodega']->name}");
-                    $this->info("   No potential match found in Boutique-POS\n");
+                    $this->info("📦 Bodega Item: {$match['bodega']->name}");
+                    $this->info("🏷️ Current SKU:  {$match['bodega']->sku ?? '(none)'}");
+                    $this->info("⚠️  No potential match found in Boutique-POS\n");
                     continue;
                 }
 
                 $this->info("📦 Bodega Item: {$match['bodega']->name}");
+                $this->info("🏷️ Current SKU:  {$match['bodega']->sku ?? '(none)'}");
                 $this->info("🔍 Best Match:   {$match['boutique']->name}");
                 $this->info("📊 Similarity:   {$match['score']}%");
-                $this->info("🏷️ SKU:          {$match['boutique']->sku}");
+                $this->info("🏷️ New SKU:      {$match['boutique']->sku}");
 
-                if ($this->confirm("\nAre these the same product? Do you want to apply this SKU?", true)) {
+                if ($this->confirm("\nAre these the same product? Do you want to update the SKU?", true)) {
                     $item = Item::find($match['bodega']->id);
                     $item->bdg_sku = $match['boutique']->sku;
                     $item->save();
                     $updated++;
-                    $this->info("✅ Applied SKU: {$item->bdg_sku}\n");
+                    $this->info("✅ Updated SKU to: {$item->bdg_sku}\n");
                 } else {
                     $this->info("❌ Skipped this match\n");
                 }

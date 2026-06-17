@@ -375,33 +375,33 @@ class StockTransferController extends Controller
                 'string',
                 'max:255',
                 function ($attribute, $value, $fail) use ($request) {
-                    // Check Bodega Local DB
-                    $existsInLocal = \App\Models\Item::whereRaw('LOWER(bdg_name) = ?', [strtolower($value)])
-                        ->where('bdg_id', '!=', $request->item_id)
-                        ->exists();
-                    if ($existsInLocal) {
-                        $fail('This item name already exists in Bodega.');
-                        return;
-                    }
+                    $currentItem = \App\Models\Item::find($request->item_id);
+                    if ($currentItem && strtolower(trim($value)) !== strtolower(trim($currentItem->bdg_name))) {
+                        $existsInLocal = \App\Models\Item::whereRaw('LOWER(bdg_name) = ?', [strtolower(trim($value))])
+                            ->where('bdg_id', '!=', $request->item_id)
+                            ->exists();
+                        if ($existsInLocal) {
+                            $fail('This item name already exists in Bodega.');
+                            return;
+                        }
 
-                    // Check POS DB
-                    try {
-                        // Find the sku of the current item to exclude itself from POS check
-                        $currentItem = \App\Models\Item::find($request->item_id);
-                        $posItemQuery = \Illuminate\Support\Facades\DB::connection('boutique_pos')
-                            ->table('items')
-                            ->whereRaw('LOWER(name) = ?', [strtolower($value)]);
-                        
-                        if ($currentItem && $currentItem->bdg_sku) {
-                            $posItemQuery->where('sku', '!=', $currentItem->bdg_sku);
+                        // Check POS DB
+                        try {
+                            $posItemQuery = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                                ->table('items')
+                                ->whereRaw('LOWER(name) = ?', [strtolower(trim($value))]);
+                            
+                            if ($currentItem->bdg_sku) {
+                                $posItemQuery->where('sku', '!=', $currentItem->bdg_sku);
+                            }
+                            
+                            $existsInPos = $posItemQuery->exists();
+                            if ($existsInPos) {
+                                $fail('This item name already exists in the POS system.');
+                            }
+                        } catch (\Exception $e) {
+                            // ignore connection failure
                         }
-                        
-                        $existsInPos = $posItemQuery->exists();
-                        if ($existsInPos) {
-                            $fail('This item name already exists in the POS system.');
-                        }
-                    } catch (\Exception $e) {
-                        // ignore connection failure
                     }
                 }
             ],

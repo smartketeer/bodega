@@ -370,7 +370,41 @@ class StockTransferController extends Controller
     {
         $request->validate([
             'item_id' => 'required|exists:bodega_items,bdg_id',
-            'name' => 'required|string',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    // Check Bodega Local DB
+                    $existsInLocal = \App\Models\Item::whereRaw('LOWER(bdg_name) = ?', [strtolower($value)])
+                        ->where('bdg_id', '!=', $request->item_id)
+                        ->exists();
+                    if ($existsInLocal) {
+                        $fail('This item name already exists in Bodega.');
+                        return;
+                    }
+
+                    // Check POS DB
+                    try {
+                        // Find the sku of the current item to exclude itself from POS check
+                        $currentItem = \App\Models\Item::find($request->item_id);
+                        $posItemQuery = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                            ->table('items')
+                            ->whereRaw('LOWER(name) = ?', [strtolower($value)]);
+                        
+                        if ($currentItem && $currentItem->bdg_sku) {
+                            $posItemQuery->where('sku', '!=', $currentItem->bdg_sku);
+                        }
+                        
+                        $existsInPos = $posItemQuery->exists();
+                        if ($existsInPos) {
+                            $fail('This item name already exists in the POS system.');
+                        }
+                    } catch (\Exception $e) {
+                        // ignore connection failure
+                    }
+                }
+            ],
             'capitalPrice' => 'required|numeric',
             'sellingPrice' => 'required|numeric',
         ]);
@@ -407,7 +441,7 @@ class StockTransferController extends Controller
                     try {
                         $existsInPos = \Illuminate\Support\Facades\DB::connection('boutique_pos')
                             ->table('items')
-                            ->whereRaw('LOWER(bdg_name) = ?', [strtolower($value)])
+                            ->whereRaw('LOWER(name) = ?', [strtolower($value)])
                             ->exists();
                         if ($existsInPos) {
                             $fail('This item name already exists in the POS system.');

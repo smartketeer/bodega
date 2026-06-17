@@ -67,6 +67,11 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                 setIsDuplicateModalOpen(false);
                 setAddItemForm({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
                 router.reload();
+            },
+            onError: (errors) => {
+                if (errors.name) {
+                    alert(errors.name);
+                }
             }
         });
     };
@@ -319,6 +324,11 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
         }, {
             onSuccess: () => {
                 setEditingItemId(null);
+            },
+            onError: (errors) => {
+                if (errors.name) {
+                    alert(errors.name);
+                }
             }
         });
     };

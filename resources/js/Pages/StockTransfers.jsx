@@ -60,11 +60,11 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     };
 
     const proceedSaveNewItem = () => {
+        setIsDuplicateModalOpen(false);
         router.post('/items', addItemForm, {
             preserveScroll: true,
             onSuccess: () => {
                 setIsAddItemModalOpen(false);
-                setIsDuplicateModalOpen(false);
                 setAddItemForm({ name: '', sku: '', category_id: '', capital_price: '', selling_price: '', initial_stocks: '' });
                 router.reload();
             },

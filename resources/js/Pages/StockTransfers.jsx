@@ -794,7 +794,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                                 required
                                             >
                                                 <option value="" disabled>Select item</option>
-                                                {availableItems.map(item => (
+                                                {filteredItems.slice(0, 500).map(item => (
                                                     <option key={item.id} value={item.id}>{item.name}</option>
                                                 ))}
                                             </select>

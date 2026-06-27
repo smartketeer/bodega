@@ -1,25 +1,32 @@
 param (
     [string]$Server = "u830453162@194.164.74.81",
-    [string]$Port = "65002"
+    [string]$Port = "65002",
+    [string]$RemotePath = "domains/bodega.boutique-pos.com/public_html"
 )
 
-Write-Host "🚀 Starting Deployment Process..." -ForegroundColor Cyan
+Write-Host "Starting Deployment Process..." -ForegroundColor Cyan
 
 # 1. Build the frontend assets locally
-Write-Host "📦 Building frontend assets (npm run build)..." -ForegroundColor Yellow
+Write-Host "Building frontend assets (npm run build)..." -ForegroundColor Yellow
 npm run build
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Build failed! Aborting deployment." -ForegroundColor Red
+    Write-Host "Build failed! Aborting deployment." -ForegroundColor Red
     exit 1
 }
 
-# 2. Upload the frontend build directly to public_html
-Write-Host "🌐 Uploading public/build folder to public_html..." -ForegroundColor Yellow
-scp -P $Port -r public/build $Server`:public_html/
+# 2. Push code to GitHub
+Write-Host "Pushing code to GitHub..." -ForegroundColor Yellow
+git add .
+git commit -m "deploy update"
+git push
 
-# 3. Trigger Git Pull on the server backend (bodega_app)
-Write-Host "⚙️ Updating backend files in bodega_app via Git..." -ForegroundColor Yellow
-ssh -p $Port $Server "cd bodega_app && git pull origin main && composer install --no-dev --optimize-autoloader"
+# 3. Upload the frontend build to server
+Write-Host "Uploading public/build folder to server..." -ForegroundColor Yellow
+scp -P $Port -r public/build "${Server}:${RemotePath}/public/"
 
-Write-Host "✅ Deployment Complete! Your live server is now up to date." -ForegroundColor Green
+# 4. Pull latest code on the server
+Write-Host "Updating backend files on server via Git..." -ForegroundColor Yellow
+ssh -p $Port $Server "cd ${RemotePath} && git pull origin main"
+
+Write-Host "Deployment Complete!" -ForegroundColor Green

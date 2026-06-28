@@ -134,6 +134,10 @@ export default function BoutiqueLayout({ user, children }) {
                             <ArrowLeft size={20} className="text-gray-500" />
                             Back to Main Inventory
                         </a>
+                        <Link method="post" href={route('logout')} as="button" className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors text-left">
+                            <LogOut size={20} className="text-red-500" />
+                            Sign Out
+                        </Link>
                     </div>
                 </div>
             </aside>

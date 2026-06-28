@@ -15,8 +15,7 @@ class StockTransferController extends Controller
     {
         $branches = Branch::where('is_active', 1)->get(['id', 'name']);
         
-        $availableItems = Item::where('bdg_stock_qty', '>', 0)
-            ->get(['bdg_id as id', 'bdg_name as name', 'bdg_sku as sku', 'bdg_stock_qty as stock', 'bdg_cost as capitalPrice', 'bdg_price as sellingPrice']);
+        $availableItems = Item::get(['bdg_id as id', 'bdg_name as name', 'bdg_sku as sku', 'bdg_stock_qty as stock', 'bdg_cost as capitalPrice', 'bdg_price as sellingPrice']);
 
         $pendingRequisitions = \Illuminate\Support\Facades\DB::connection('boutique_pos')
             ->table('branch_requisitions')

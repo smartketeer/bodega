@@ -815,6 +815,22 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                         {activeTab === 'stock-out' && (
                                             <>
                                                 <div>
+                                                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Reason</label>
+                                                    <select 
+                                                        className="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-blue-500 shadow-sm text-sm px-4 py-2.5"
+                                                        value={reason}
+                                                        onChange={e => setReason(e.target.value)}
+                                                        required
+                                                    >
+                                                        <option value="" disabled>Select reason</option>
+                                                        <option value="Issue">Issue (Branch Request)</option>
+                                                        <option value="Damage">Damage / Spoilage</option>
+                                                        <option value="Loss">Loss / Missing</option>
+                                                        <option value="Return">Return to Supplier</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div>
                                                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Reference (Optional)</label>
                                                     <input 
                                                         type="text"

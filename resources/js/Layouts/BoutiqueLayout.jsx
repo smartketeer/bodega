@@ -130,10 +130,10 @@ export default function BoutiqueLayout({ user, children }) {
                         </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <a href="https://boutique-pos.com/admin" className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors">
+                        <Link method="post" as="button" href={route('logout.pos')} className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-gray-700 hover:text-gray-900 transition-colors text-left">
                             <ArrowLeft size={20} className="text-gray-500" />
                             Back to Main Inventory
-                        </a>
+                        </Link>
                         <Link method="post" href={route('logout')} as="button" className="flex items-center gap-3 px-4 py-2 w-full text-sm font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors text-left">
                             <LogOut size={20} className="text-red-500" />
                             Sign Out

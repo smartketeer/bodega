@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, usePage, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { 
     LayoutDashboard, 
@@ -27,6 +27,29 @@ export default function BoutiqueLayout({ user, children }) {
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
+    }, []);
+
+    // Auto-logout after 15 minutes of inactivity
+    useEffect(() => {
+        let timeout;
+        const timeoutMinutes = 15;
+
+        const resetTimeout = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                router.post(route('logout'));
+            }, timeoutMinutes * 60 * 1000);
+        };
+
+        const events = ['mousemove', 'keydown', 'scroll', 'click'];
+        
+        events.forEach(event => window.addEventListener(event, resetTimeout));
+        resetTimeout();
+
+        return () => {
+            events.forEach(event => window.removeEventListener(event, resetTimeout));
+            clearTimeout(timeout);
+        };
     }, []);
 
     const formattedDate = currentTime.toLocaleDateString('en-US', {

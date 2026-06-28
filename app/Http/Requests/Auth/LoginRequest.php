@@ -50,6 +50,13 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        if (Auth::user()->role === 'cashier') {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => 'Cashiers are not authorized to access the Bodega system.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

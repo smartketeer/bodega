@@ -43,7 +43,10 @@ export default function Login({ status, canResetPassword }) {
                         className="mt-1 block w-full"
                         autoComplete="username"
                         isFocused={true}
-                        onChange={(e) => setData('email', e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/[^a-zA-Z0-9@.]/g, '');
+                            setData('email', val);
+                        }}
                     />
 
                     <InputError message={errors.email} className="mt-2" />

@@ -28,7 +28,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['required', 'string', 'email', 'regex:/^[a-zA-Z0-9@.]+$/'],
             'password' => ['required', 'string'],
         ];
     }
@@ -50,10 +50,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (Auth::user()->role === 'cashier') {
+        if (! in_array(Auth::user()->role, ['admin', 'developer'])) {
             Auth::logout();
             throw ValidationException::withMessages([
-                'email' => 'Cashiers are not authorized to access the Bodega system.',
+                'email' => 'Only Admin and Developer accounts are authorized to access the Bodega system.',
             ]);
         }
 

@@ -172,7 +172,6 @@ class StockTransferController extends Controller
 
         $transfer = StockTransfer::create([
             'bdg_reference_number' => 'TRX-' . strtoupper(uniqid()),
-            'bdg_from_branch_id' => null, // Main Bodega
             'bdg_to_branch_id' => $request->to_branch_id,
             // 'bdg_requested_by' => auth()->id(), // Uncomment if auth is working
             'bdg_status' => 'completed',

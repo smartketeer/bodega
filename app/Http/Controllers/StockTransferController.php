@@ -217,11 +217,23 @@ class StockTransferController extends Controller
                             ->increment('stock_qty', $reqItem['transferQty']);
 
                         // Increment specific branch stock in the POS
-                        \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                        $affected = \Illuminate\Support\Facades\DB::connection('boutique_pos')
                             ->table('branch_item_stocks')
                             ->where('item_id', $posItem->id)
                             ->where('branch_id', $posBranchId)
                             ->increment('quantity', $reqItem['transferQty']);
+                            
+                        if ($affected === 0) {
+                            \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                                ->table('branch_item_stocks')
+                                ->insert([
+                                    'item_id' => $posItem->id,
+                                    'branch_id' => $posBranchId,
+                                    'quantity' => $reqItem['transferQty'],
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                        }
                     } else {
                         // Item doesn't exist in POS yet, let's create it!
                         $categoryName = 'Uncategorized';
@@ -253,8 +265,8 @@ class StockTransferController extends Controller
                             ->insertGetId([
                                 'name' => $item->bdg_name,
                                 'sku' => $item->bdg_sku,
-                                'cost' => $item->bdg_cost,
-                                'price' => $item->bdg_price,
+                                'cost' => 0, // Bodega price does not affect POS
+                                'price' => 0, // Bodega price does not affect POS
                                 'stock_qty' => $reqItem['transferQty'],
                                 'category_id' => $posCategoryId,
                                 'is_service' => 0,
@@ -497,8 +509,8 @@ class StockTransferController extends Controller
                     'name' => $validated['name'],
                     'sku' => $item->bdg_sku,
                     'category_id' => $posCategoryId,
-                    'cost' => $validated['capital_price'],
-                    'price' => $validated['selling_price'],
+                    'cost' => 0, // Bodega price does not affect POS
+                    'price' => 0, // Bodega price does not affect POS
                     'stock_qty' => 0, // Branch stock is 0 initially when added in Bodega
                     'created_at' => now(),
                     'updated_at' => now(),

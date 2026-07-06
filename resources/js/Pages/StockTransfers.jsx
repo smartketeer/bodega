@@ -1243,7 +1243,7 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                             <h3 className="text-xl font-bold text-gray-900">Sync from Main POS</h3>
                         </div>
                         <p className="text-gray-600 mb-6 text-sm">
-                            This will import all product <strong>names</strong> from the Main POS that don't exist yet in Bodega. Items will be added with <strong>zero stock</strong> and no price. Duplicates will be skipped.
+                            This will import all product <strong>names</strong> from the Main POS that don't exist yet in Bodega. Items will be added with <strong>zero stock</strong>, and their capital and selling prices will be included. Duplicates will be skipped.
                         </p>
 
                         <div className="flex gap-3">

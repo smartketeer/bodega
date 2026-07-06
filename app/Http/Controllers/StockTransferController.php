@@ -660,7 +660,7 @@ class StockTransferController extends Controller
         // 1. Get all item names from Main POS
         $posItems = \Illuminate\Support\Facades\DB::connection('boutique_pos')
             ->table('items')
-            ->select('name', 'category_id')
+            ->select('name', 'category_id', 'cost', 'price')
             ->get();
 
         // 2. Get all existing Bodega item names (lowercased for comparison)
@@ -742,8 +742,8 @@ class StockTransferController extends Controller
             $item->bdg_name = trim($posItem->name);
             $item->bdg_category_id = $categoryId;
             $item->bdg_sku = null;
-            $item->bdg_cost = 0;
-            $item->bdg_price = 0;
+            $item->bdg_cost = $posItem->cost ?? 0;
+            $item->bdg_price = $posItem->price ?? 0;
             $item->bdg_stock_qty = 0;
             $item->bdg_is_service = 0;
             $item->save();

@@ -25,6 +25,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/items', [\App\Http\Controllers\StockTransferController::class, 'storeItem']);
     Route::post('/items/check-duplicate', [\App\Http\Controllers\StockTransferController::class, 'checkDuplicate']);
     Route::post('/items/bulk-delete', [\App\Http\Controllers\StockTransferController::class, 'bulkDelete']);
+    Route::post('/sync-missing-items', [\App\Http\Controllers\StockTransferController::class, 'syncMissingItems']);
     Route::post('/categories', [\App\Http\Controllers\StockTransferController::class, 'storeCategory']);
 
     Route::get('/dead-stock', [InventoryAnalyticsController::class, 'deadStock']);

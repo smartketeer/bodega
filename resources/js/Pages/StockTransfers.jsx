@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import { 
     Send, FileText, History, CheckCircle2, Clock, Search, Layers, X, Package, 
-    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus, Trash2, AlertCircle
+    ArrowDownCircle, ArrowUpCircle, Edit2, RefreshCw, Plus, Trash2, AlertCircle, Download
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -39,6 +39,10 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
     const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
     const [duplicateItems, setDuplicateItems] = useState([]);
     const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+
+    // Sync from Main state
+    const [isSyncConfirmOpen, setIsSyncConfirmOpen] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const checkDuplicateAndSave = async (e) => {
         e.preventDefault();
@@ -84,6 +88,22 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                 setIsAddCategoryModalOpen(false);
                 setAddCategoryForm({ name: '', type: 'product' });
                 router.reload();
+            }
+        });
+    };
+
+    const handleSyncFromMain = () => {
+        setIsSyncing(true);
+        router.post('/sync-missing-items', {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsSyncConfirmOpen(false);
+                setIsSyncing(false);
+                router.reload();
+            },
+            onError: () => {
+                setIsSyncing(false);
+                alert('Failed to sync items. Please try again.');
             }
         });
     };
@@ -377,6 +397,13 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                             onClick={() => { setIsAddDropdownOpen(false); setIsAddCategoryModalOpen(true); }}
                                         >
                                             <Plus size={16} /> Add Category
+                                        </button>
+                                        <div className="border-t border-gray-100 my-1"></div>
+                                        <button 
+                                            className="w-full text-left px-4 py-2.5 hover:bg-blue-50 flex items-center gap-3 text-sm font-bold text-blue-700"
+                                            onClick={() => { setIsAddDropdownOpen(false); setIsSyncConfirmOpen(true); }}
+                                        >
+                                            <Download size={16} /> Sync from Main
                                         </button>
                                     </div>
                                 )}
@@ -1191,6 +1218,55 @@ export default function StockTransfers({ branches, availableItems, branchRequisi
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm"
                             >
                                 Yes, Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sync from Main Confirmation Modal */}
+            {isSyncConfirmOpen && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative">
+                        <button 
+                            onClick={() => setIsSyncConfirmOpen(false)}
+                            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                            disabled={isSyncing}
+                        >
+                            <X size={20} />
+                        </button>
+                        
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 p-2 rounded-xl">
+                                <Download size={20} className="text-blue-600" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Sync from Main POS</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6 text-sm">
+                            This will import all product <strong>names</strong> from the Main POS that don't exist yet in Bodega. Items will be added with <strong>zero stock</strong> and no price. Duplicates will be skipped.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setIsSyncConfirmOpen(false)}
+                                className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition-colors"
+                                disabled={isSyncing}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSyncFromMain}
+                                disabled={isSyncing}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isSyncing ? (
+                                    <>
+                                        <RefreshCw size={14} className="animate-spin" />
+                                        Syncing...
+                                    </>
+                                ) : (
+                                    'Yes, Sync'
+                                )}
                             </button>
                         </div>
                     </div>

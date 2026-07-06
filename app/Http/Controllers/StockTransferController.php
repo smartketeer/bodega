@@ -654,4 +654,110 @@ class StockTransferController extends Controller
 
         return redirect()->back()->with('success', 'Items deleted successfully.');
     }
+
+    public function syncMissingItems()
+    {
+        // 1. Get all item names from Main POS
+        $posItems = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+            ->table('items')
+            ->select('name', 'category_id')
+            ->get();
+
+        // 2. Get all existing Bodega item names (lowercased for comparison)
+        $bodegaNames = Item::pluck('bdg_name')
+            ->map(fn($name) => strtolower(trim($name)))
+            ->toArray();
+
+        // 3. Find names in Main that are NOT in Bodega (case-insensitive, deduplicated)
+        $seen = [];
+        $missingItems = [];
+
+        foreach ($posItems as $posItem) {
+            $normalizedName = strtolower(trim($posItem->name));
+
+            // Skip if already in Bodega
+            if (in_array($normalizedName, $bodegaNames)) {
+                continue;
+            }
+
+            // Skip if we already have this name in our batch (dedup)
+            if (isset($seen[$normalizedName])) {
+                continue;
+            }
+
+            $seen[$normalizedName] = true;
+            $missingItems[] = $posItem;
+        }
+
+        if (empty($missingItems)) {
+            return redirect()->back()->with('success', 'All items are already synced. No new items to import.');
+        }
+
+        // 4. Pre-fetch category mappings: POS category_id -> POS category name
+        $posCategoryIds = collect($missingItems)->pluck('category_id')->unique()->filter()->values()->toArray();
+        $posCategoryNames = [];
+        if (!empty($posCategoryIds)) {
+            $posCategoryNames = \Illuminate\Support\Facades\DB::connection('boutique_pos')
+                ->table('categories')
+                ->whereIn('id', $posCategoryIds)
+                ->pluck('name', 'id')
+                ->toArray();
+        }
+
+        // 5. Pre-fetch Bodega categories (name -> bdg_id)
+        $bodegaCategories = \App\Models\Category::pluck('bdg_id', 'bdg_name')->toArray();
+        // Also build a lowercase lookup
+        $bodegaCategoriesLower = [];
+        foreach ($bodegaCategories as $catName => $catId) {
+            $bodegaCategoriesLower[strtolower($catName)] = $catId;
+        }
+
+        // Ensure "Uncategorized" category exists as fallback
+        if (!isset($bodegaCategoriesLower['uncategorized'])) {
+            $fallbackCategory = new \App\Models\Category();
+            $fallbackCategory->bdg_name = 'Uncategorized';
+            $fallbackCategory->bdg_description = 'product';
+            $fallbackCategory->save();
+            $uncategorizedId = $fallbackCategory->bdg_id;
+            $bodegaCategoriesLower['uncategorized'] = $uncategorizedId;
+        } else {
+            $uncategorizedId = $bodegaCategoriesLower['uncategorized'];
+        }
+
+        // 6. Insert each missing item
+        $syncedCount = 0;
+        $syncedNames = [];
+
+        foreach ($missingItems as $posItem) {
+            // Try to match category by name
+            $categoryId = $uncategorizedId;
+            if ($posItem->category_id && isset($posCategoryNames[$posItem->category_id])) {
+                $posCatName = strtolower($posCategoryNames[$posItem->category_id]);
+                if (isset($bodegaCategoriesLower[$posCatName])) {
+                    $categoryId = $bodegaCategoriesLower[$posCatName];
+                }
+            }
+
+            $item = new Item();
+            $item->bdg_name = trim($posItem->name);
+            $item->bdg_category_id = $categoryId;
+            $item->bdg_sku = null;
+            $item->bdg_cost = 0;
+            $item->bdg_price = 0;
+            $item->bdg_stock_qty = 0;
+            $item->bdg_is_service = 0;
+            $item->save();
+
+            $syncedCount++;
+            $syncedNames[] = trim($posItem->name);
+        }
+
+        \App\Models\ActivityLog::create([
+            'actor_user_id' => auth()->id() ?? 1,
+            'event_type' => 'items_synced_from_pos',
+            'description' => "Synced {$syncedCount} missing item(s) from Main POS: " . implode(', ', array_slice($syncedNames, 0, 10)) . (count($syncedNames) > 10 ? '...' : ''),
+        ]);
+
+        return redirect()->back()->with('success', "Successfully synced {$syncedCount} new item(s) from Main POS.");
+    }
 }

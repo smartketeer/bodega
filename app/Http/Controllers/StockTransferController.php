@@ -657,43 +657,66 @@ class StockTransferController extends Controller
 
     public function syncMissingItems()
     {
-        // 1. Get all item names from Main POS
+        // 1. Get all items from Main POS
         $posItems = \Illuminate\Support\Facades\DB::connection('boutique_pos')
             ->table('items')
             ->select('name', 'category_id', 'cost', 'price')
             ->get();
 
-        // 2. Get all existing Bodega item names (lowercased for comparison)
-        $bodegaNames = Item::pluck('bdg_name')
-            ->map(fn($name) => strtolower(trim($name)))
-            ->toArray();
+        // 2. Get all existing Bodega items
+        $bodegaItems = Item::all();
+        $bodegaLookup = [];
+        foreach ($bodegaItems as $bItem) {
+            $bodegaLookup[strtolower(trim($bItem->bdg_name))] = $bItem;
+        }
 
-        // 3. Find names in Main that are NOT in Bodega (case-insensitive, deduplicated)
+        // 3. Separate missing items and items that need price updates
         $seen = [];
         $missingItems = [];
+        $itemsToUpdate = [];
 
         foreach ($posItems as $posItem) {
             $normalizedName = strtolower(trim($posItem->name));
 
-            // Skip if already in Bodega
-            if (in_array($normalizedName, $bodegaNames)) {
-                continue;
-            }
-
-            // Skip if we already have this name in our batch (dedup)
+            // Skip if we already processed this name in our batch (dedup)
             if (isset($seen[$normalizedName])) {
                 continue;
             }
-
             $seen[$normalizedName] = true;
-            $missingItems[] = $posItem;
+
+            if (isset($bodegaLookup[$normalizedName])) {
+                $bItem = $bodegaLookup[$normalizedName];
+                // If the price or cost differs, mark for update
+                $posCost = $posItem->cost ?? 0;
+                $posPrice = $posItem->price ?? 0;
+                
+                if (floatval($bItem->bdg_cost) !== floatval($posCost) || floatval($bItem->bdg_price) !== floatval($posPrice)) {
+                    $itemsToUpdate[] = [
+                        'bodega_item' => $bItem,
+                        'pos_cost' => $posCost,
+                        'pos_price' => $posPrice
+                    ];
+                }
+            } else {
+                $missingItems[] = $posItem;
+            }
         }
 
-        if (empty($missingItems)) {
-            return redirect()->back()->with('success', 'All items are already synced. No new items to import.');
+        if (empty($missingItems) && empty($itemsToUpdate)) {
+            return redirect()->back()->with('success', 'All items are already synced. No new items or price updates to import.');
         }
 
-        // 4. Pre-fetch category mappings: POS category_id -> POS category name
+        // 4. Update existing items
+        $updatedCount = 0;
+        foreach ($itemsToUpdate as $update) {
+            $bItem = $update['bodega_item'];
+            $bItem->bdg_cost = $update['pos_cost'];
+            $bItem->bdg_price = $update['pos_price'];
+            $bItem->save();
+            $updatedCount++;
+        }
+
+        // 5. Pre-fetch category mappings: POS category_id -> POS category name
         $posCategoryIds = collect($missingItems)->pluck('category_id')->unique()->filter()->values()->toArray();
         $posCategoryNames = [];
         if (!empty($posCategoryIds)) {
@@ -704,9 +727,8 @@ class StockTransferController extends Controller
                 ->toArray();
         }
 
-        // 5. Pre-fetch Bodega categories (name -> bdg_id)
+        // 6. Pre-fetch Bodega categories (name -> bdg_id)
         $bodegaCategories = \App\Models\Category::pluck('bdg_id', 'bdg_name')->toArray();
-        // Also build a lowercase lookup
         $bodegaCategoriesLower = [];
         foreach ($bodegaCategories as $catName => $catId) {
             $bodegaCategoriesLower[strtolower($catName)] = $catId;
@@ -724,12 +746,11 @@ class StockTransferController extends Controller
             $uncategorizedId = $bodegaCategoriesLower['uncategorized'];
         }
 
-        // 6. Insert each missing item
+        // 7. Insert each missing item
         $syncedCount = 0;
         $syncedNames = [];
 
         foreach ($missingItems as $posItem) {
-            // Try to match category by name
             $categoryId = $uncategorizedId;
             if ($posItem->category_id && isset($posCategoryNames[$posItem->category_id])) {
                 $posCatName = strtolower($posCategoryNames[$posItem->category_id]);
@@ -752,12 +773,21 @@ class StockTransferController extends Controller
             $syncedNames[] = trim($posItem->name);
         }
 
+        $messageParts = [];
+        if ($syncedCount > 0) {
+            $messageParts[] = "Added {$syncedCount} new item(s)";
+        }
+        if ($updatedCount > 0) {
+            $messageParts[] = "Updated prices for {$updatedCount} existing item(s)";
+        }
+        $logMessage = "Synced from Main POS: " . implode(' and ', $messageParts) . ".";
+
         \App\Models\ActivityLog::create([
             'actor_user_id' => auth()->id() ?? 1,
             'event_type' => 'items_synced_from_pos',
-            'description' => "Synced {$syncedCount} missing item(s) from Main POS: " . implode(', ', array_slice($syncedNames, 0, 10)) . (count($syncedNames) > 10 ? '...' : ''),
+            'description' => $logMessage,
         ]);
 
-        return redirect()->back()->with('success', "Successfully synced {$syncedCount} new item(s) from Main POS.");
+        return redirect()->back()->with('success', $logMessage);
     }
 }
